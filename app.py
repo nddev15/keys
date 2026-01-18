@@ -64,6 +64,17 @@ def create_db():
             expires_at TIMESTAMP
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS key_delivery_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uid TEXT,
+            email TEXT,
+            key TEXT,
+            period TEXT,
+            status TEXT,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -117,6 +128,18 @@ def decrement_promo(code):
     c.execute("UPDATE promo_codes SET uses_left=uses_left-1 WHERE code=?", (code.upper(),))
     conn.commit()
     conn.close()
+
+def log_key_delivery(uid, email, key, period, status="sent"):
+    """Ghi lại lần gửi key để tracking"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO key_delivery_log (uid, email, key, period, status)
+        VALUES (?, ?, ?, ?, ?)
+    """, (uid, email, key, period, status))
+    conn.commit()
+    conn.close()
+    print(f"[TRACKING] Logged delivery: UID={uid}, Email={email}, Key={key}, Period={period}, Status={status}")
 
 # =================== Utils ===================
 def get_key_file_path(period_code):
@@ -509,6 +532,9 @@ def check_mb_payment():
     set_email_key(uid, email, key, promo_code)
     mark_paid(uid)
     
+    # Log delivery ngay sau khi email gửi thành công
+    log_key_delivery(uid, email, key, period, "sent")
+    
     # Xóa key từ file và lưu vào key_solved.txt sau khi email gửi thành công
     period_code_map_reverse = {"1 day": "1d", "7 day": "7d", "30 day": "30d", "90 day": "90d"}
     period_code = period_code_map_reverse.get(period, "30d")
@@ -549,6 +575,96 @@ def check_mb_payment():
             "final_amount": final_amount,
             "promo_code": promo_code
         }
+    })
+
+# =================== Debug Endpoints ===================
+@app.route("/debug/key-status", methods=["GET"])
+def debug_key_status():
+    """Debug endpoint: Kiểm tra status của key files và delivery log"""
+    keys_dir = os.path.join("data", "keys")
+    key_files = ["key1d.txt", "key7d.txt", "key30d.txt", "key90d.txt", "key_solved.txt"]
+    
+    file_status = {}
+    total_keys = 0
+    for key_file in key_files:
+        full_path = os.path.join(keys_dir, key_file)
+        if os.path.exists(full_path):
+            with open(full_path, "r", encoding="utf-8") as f:
+                lines = [line.strip() for line in f.readlines() if line.strip()]
+            file_status[key_file] = {
+                "exists": True,
+                "line_count": len(lines),
+                "sample": lines[:3] if lines else []  # First 3 lines
+            }
+            if key_file != "key_solved.txt":
+                total_keys += len(lines)
+        else:
+            file_status[key_file] = {"exists": False}
+    
+    # Get delivery log
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        SELECT uid, email, key, period, sent_at 
+        FROM key_delivery_log 
+        ORDER BY sent_at DESC 
+        LIMIT 20
+    """)
+    recent_deliveries = []
+    for row in c.fetchall():
+        recent_deliveries.append({
+            "uid": row[0],
+            "email": row[1],
+            "key": row[2],
+            "period": row[3],
+            "sent_at": row[4]
+        })
+    conn.close()
+    
+    return jsonify({
+        "status": "ok",
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "file_status": file_status,
+        "total_active_keys": total_keys,
+        "recent_deliveries": recent_deliveries
+    })
+
+@app.route("/debug/check-key/<key>", methods=["GET"])
+def debug_check_key(key):
+    """Debug endpoint: Kiểm tra một key cụ thể xem nó ở file nào"""
+    keys_dir = os.path.join("data", "keys")
+    key_files = ["key1d.txt", "key7d.txt", "key30d.txt", "key90d.txt"]
+    
+    found_in = []
+    for key_file in key_files:
+        full_path = os.path.join(keys_dir, key_file)
+        if os.path.exists(full_path):
+            with open(full_path, "r", encoding="utf-8") as f:
+                lines = [line.strip() for line in f.readlines() if line.strip()]
+            if key in lines:
+                found_in.append(key_file)
+    
+    # Check delivery log
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        SELECT uid, email, period, sent_at 
+        FROM key_delivery_log 
+        WHERE key = ?
+    """, (key,))
+    delivery_info = c.fetchone()
+    conn.close()
+    
+    return jsonify({
+        "status": "ok",
+        "key": key,
+        "found_in_files": found_in if found_in else "NOT FOUND",
+        "delivery_log": {
+            "uid": delivery_info[0],
+            "email": delivery_info[1],
+            "period": delivery_info[2],
+            "sent_at": delivery_info[3]
+        } if delivery_info else None
     })
 
 # =================== Main ===================
