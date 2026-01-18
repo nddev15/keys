@@ -375,51 +375,6 @@ def check_mb_payment():
         return jsonify({"status": "error", "message": f"Lỗi đọc API MB: {e}"}), 500
     # --- END FIXED API CALL ---
 
-    now = datetime.now()
-    found_tx = None
-    code_upper = code_order.upper()
-    
-    for tx in transactions:
-        # Chỉ kiểm tra giao dịch incoming (nhanh nhất)
-        if tx.get("type") != "IN":
-            continue
-
-        # Kiểm tra amount (nhanh, không cần parse)
-        try:
-            # Amount có thể là string với dấu phân cách: "1,000" hoặc "1.000"
-            amount_str = tx.get("amount", "0").replace(",", "").replace(".", "")
-            credit = int(amount_str)
-        except:
-            continue
-        
-        if credit != amount:
-            continue
-            
-        # Kiểm tra code trong description (nhanh)
-        desc = tx.get("description", "").upper()
-        if code_upper not in desc:
-            continue
-
-        # Parse time chỉ khi cần thiết (mất nhiều thời gian)
-        try:
-            tx_time = datetime.strptime(tx["transactionDate"], "%d/%m/%Y %H:%M:%S")
-        except:
-            continue
-
-        # Kiểm tra time (bỏ giao dịch cũ hơn 24h)
-        time_diff = now - tx_time
-        if time_diff >= timedelta(hours=24):
-            continue
-        
-        found_tx = tx
-        break
-
-    if not found_tx:
-        return jsonify({
-            "status": "error",
-            "message": f"⏳ Giao dịch với mã '{code_order}' chưa tìm thấy. Hãy đợi trong khoảng 20 - 30s rồi ấn lại vào nút 'Nhận Key' ✅"
-        }), 400
-
     # Chuẩn bị base_period cho việc kiểm tra coupon
     base_period = period_code.replace("_v2", "")
     
@@ -449,6 +404,51 @@ def check_mb_payment():
                 }), 400
 
     final_amount = round(amount * (100 - discount_percent) / 100)
+
+    now = datetime.now()
+    found_tx = None
+    code_upper = code_order.upper()
+    
+    for tx in transactions:
+        # Chỉ kiểm tra giao dịch incoming (nhanh nhất)
+        if tx.get("type") != "IN":
+            continue
+
+        # Kiểm tra amount (nhanh, không cần parse)
+        try:
+            # Amount có thể là string với dấu phân cách: "1,000" hoặc "1.000"
+            amount_str = tx.get("amount", "0").replace(",", "").replace(".", "")
+            credit = int(amount_str)
+        except:
+            continue
+        
+        if credit != final_amount:
+            continue
+            
+        # Kiểm tra code trong description (nhanh)
+        desc = tx.get("description", "").upper()
+        if code_upper not in desc:
+            continue
+
+        # Parse time chỉ khi cần thiết (mất nhiều thời gian)
+        try:
+            tx_time = datetime.strptime(tx["transactionDate"], "%d/%m/%Y %H:%M:%S")
+        except:
+            continue
+
+        # Kiểm tra time (bỏ giao dịch cũ hơn 24h)
+        time_diff = now - tx_time
+        if time_diff >= timedelta(hours=24):
+            continue
+        
+        found_tx = tx
+        break
+
+    if not found_tx:
+        return jsonify({
+            "status": "error",
+            "message": f"⏳ Giao dịch với mã '{code_order}' chưa tìm thấy. Hãy đợi trong khoảng 20 - 30s rồi ấn lại vào nút 'Nhận Key' ✅"
+        }), 400
 
     key = generate_key(period)
     if not key:
