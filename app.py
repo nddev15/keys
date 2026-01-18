@@ -16,6 +16,9 @@ from threading import Lock
 # Import bot-related functions from bot.py
 from bot import bot, send_telegram, load_coupons, save_coupons, get_coupon, is_coupon_valid, use_coupon, start_bot
 
+# Import GitHub API helper
+from github_helper import get_github_manager
+
 # =================== Cấu hình ===================
 app = Flask(__name__)
 
@@ -243,10 +246,28 @@ def get_key_from_file(period_code):
             return None
 
 def delete_key_from_file(key_to_delete):
-    """Xóa key cụ thể từ TẤT CẢ file key và lưu vào key_solved.txt"""
+    """
+    Xóa key cụ thể từ TẤT CẢ file key và lưu vào key_solved.txt
+    
+    Dùng GitHub API nếu có GITHUB_TOKEN, nếu không dùng local files
+    """
     if not key_to_delete:
         print(f"[DELETE_KEY] ❌ No key provided")
         return False
+    
+    # Try GitHub API first (if available)
+    github_mgr = get_github_manager()
+    if github_mgr.use_github:
+        print("[DELETE_KEY] 🔄 Using GitHub API to update data...")
+        success = github_mgr.delete_key_and_save_solved(key_to_delete)
+        if success:
+            print("[DELETE_KEY] ✅ GitHub API update successful")
+            return True
+        else:
+            print("[DELETE_KEY] ⚠️  GitHub API update failed, continuing with local files...")
+    
+    # Fallback: Local file operations
+    print("[DELETE_KEY] 📁 Using local file operations...")
     
     solved_file = get_solved_file_path()
     keys_dir = os.path.join("data", "keys")
