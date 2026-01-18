@@ -29,6 +29,37 @@ MB_API_URL = "https://thueapibank.vn/historyapimbbankv2/07bf677194ae4972714f01a3
 # Tạo folder data/keys nếu chưa tồn tại
 os.makedirs("data/keys", exist_ok=True)
 
+def initialize_key_files():
+    """Initialize key files from image build if persistent volume is empty"""
+    key_files = {
+        "key1d": "data/keys/key1d.txt",
+        "key7d": "data/keys/key7d.txt",
+        "key30d": "data/keys/key30d.txt",
+        "key90d": "data/keys/key90d.txt",
+    }
+    
+    # Check if key files are empty (persistent volume issue)
+    all_empty = all(
+        not os.path.exists(path) or os.path.getsize(path) == 0 
+        for path in key_files.values()
+    )
+    
+    if all_empty:
+        print("[INIT] Key files are empty. Attempting to restore from build image...")
+        # Copy from image's original location if available
+        for key_type, dest_path in key_files.items():
+            source_path = f"/app/initial_data/{key_type}.txt"
+            if os.path.exists(source_path):
+                try:
+                    with open(source_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    with open(dest_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+                    print(f"[INIT] Restored {key_type} from image")
+                except Exception as e:
+                    print(f"[INIT] Failed to restore {key_type}: {e}")
+
 # Lock for file operations to prevent race conditions
 file_locks = {}
 lock_manager = Lock()
@@ -434,7 +465,7 @@ def check_mb_payment():
     order = get_order(uid)
     if not order:
         print(f"[ORDER ERROR] Order not found: uid={uid}")
-        return jsonify({"status": "error", "message": "Lỗi! Hãy đợi trong giây lát và ấn lại vào nút 'Nhận Key'"}), 404
+        return jsonify({"status": "error", "message": "Không tìm thấy đơn hàng! Hãy đợi trong giây lát và ấn lại vào nút 'Nhận Key'"}), 404
     if order[6] == 1:
         return jsonify({"status": "ok", "message": "Đã thanh toán trước đó"}), 200
 
@@ -684,6 +715,7 @@ def debug_check_key(key):
 # =================== Main ===================
 if __name__ == "__main__":
     create_db()
+    initialize_key_files()
     
     # Start bot polling in a separate thread
     bot_thread = threading.Thread(target=start_bot, daemon=True)

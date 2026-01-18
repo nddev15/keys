@@ -6,7 +6,7 @@ from telebot import TeleBot, types
 from telebot.util import extract_arguments
 
 # =================== Bot Configuration ===================
-TG_BOT_TOKEN = "8278683062:AAFxPu_7ldPcqMI63lTfR5_zwhO0n5_xsWA"
+TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 TG_CHAT_ID = "7454505306"
 COUPON_FILE = os.path.join("data", "coupon", "coupons.json")
 
@@ -236,7 +236,7 @@ def get_all_unsold_keys():
     }
     
     for filename, label in key_files.items():
-        file_path = os.path.join("/app/data", "keys", filename)
+        file_path = os.path.join("data", "keys", filename)
         if os.path.exists(file_path):
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
@@ -261,7 +261,7 @@ def get_keys_by_type(period_label):
     if not filename:
         return []
     
-    file_path = os.path.join("/app/data", "keys", filename)
+    file_path = os.path.join("data", "keys", filename)
     if os.path.exists(file_path):
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -427,6 +427,8 @@ def view_keys_callback(call):
                 types.InlineKeyboardButton("➡️ Trang kế tiếp", callback_data=f"key_next_{period_label}_1")
             )
         
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="back_to_key_types"))
+        
         bot.edit_message_text(msg_text, chat_id, call.message.message_id, 
                              reply_markup=markup, parse_mode="HTML")
         bot.answer_callback_query(call.id)
@@ -447,14 +449,16 @@ def key_next_callback(call):
         msg_text, total_pages = format_keys_by_period(period_label, page=page)
         
         markup = types.InlineKeyboardMarkup()
-        row = []
+        nav_row = []
         if page > 0:
-            row.append(types.InlineKeyboardButton("⬅️ Trang trước", callback_data=f"key_prev_{period_label}_{page-1}"))
+            nav_row.append(types.InlineKeyboardButton("⬅️ Trang trước", callback_data=f"key_prev_{period_label}_{page-1}"))
         if page < total_pages - 1:
-            row.append(types.InlineKeyboardButton("➡️ Trang kế tiếp", callback_data=f"key_next_{period_label}_{page+1}"))
+            nav_row.append(types.InlineKeyboardButton("➡️ Trang kế tiếp", callback_data=f"key_next_{period_label}_{page+1}"))
         
-        if row:
-            markup.row(*row)
+        if nav_row:
+            markup.row(*nav_row)
+        
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="back_to_key_types"))
         
         bot.edit_message_text(msg_text, chat_id, call.message.message_id, 
                              reply_markup=markup, parse_mode="HTML")
@@ -476,16 +480,39 @@ def key_prev_callback(call):
         msg_text, total_pages = format_keys_by_period(period_label, page=page)
         
         markup = types.InlineKeyboardMarkup()
-        row = []
+        nav_row = []
         if page > 0:
-            row.append(types.InlineKeyboardButton("⬅️ Trang trước", callback_data=f"key_prev_{period_label}_{page-1}"))
+            nav_row.append(types.InlineKeyboardButton("⬅️ Trang trước", callback_data=f"key_prev_{period_label}_{page-1}"))
         if page < total_pages - 1:
-            row.append(types.InlineKeyboardButton("➡️ Trang kế tiếp", callback_data=f"key_next_{period_label}_{page+1}"))
+            nav_row.append(types.InlineKeyboardButton("➡️ Trang kế tiếp", callback_data=f"key_next_{period_label}_{page+1}"))
         
-        if row:
-            markup.row(*row)
+        if nav_row:
+            markup.row(*nav_row)
+        
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="back_to_key_types"))
         
         bot.edit_message_text(msg_text, chat_id, call.message.message_id, 
+                             reply_markup=markup, parse_mode="HTML")
+        bot.answer_callback_query(call.id)
+    except Exception as e:
+        print(f"[CALLBACK ERROR] {e}")
+        bot.answer_callback_query(call.id, "❌ Lỗi!", show_alert=True)
+
+@bot.callback_query_handler(func=lambda call: call.data == "back_to_key_types")
+def back_to_key_types(call):
+    """Back to key type selection"""
+    try:
+        chat_id = call.message.chat.id
+        
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("1 Ngày (1d)", callback_data="view_keys_1 Ngày"),
+            types.InlineKeyboardButton("1 Tuần (7d)", callback_data="view_keys_1 Tuần"),
+            types.InlineKeyboardButton("1 Tháng (30d)", callback_data="view_keys_1 Tháng"),
+            types.InlineKeyboardButton("1 Mùa (90d)", callback_data="view_keys_1 Mùa")
+        )
+        
+        bot.edit_message_text("🔑 <b>Chọn loại key:</b>", chat_id, call.message.message_id, 
                              reply_markup=markup, parse_mode="HTML")
         bot.answer_callback_query(call.id)
     except Exception as e:
@@ -546,7 +573,7 @@ def process_keys(message):
     
     keys = [k.strip() for k in keys_text.split("\n") if k.strip()]
     
-    file_path = os.path.join("/app/data", "keys", f"key{period}.txt")
+    file_path = os.path.join("data", "keys", f"key{period}.txt")
     
     try:
         # Tạo thư mục nếu chưa tồn tại
@@ -607,7 +634,7 @@ def process_delete_period(message):
         return
     
     period = period_map[text]
-    file_path = os.path.join("/app/data", "keys", f"key{period}.txt")
+    file_path = os.path.join("data", "keys", f"key{period}.txt")
     
     if not os.path.exists(file_path):
         del user_states[chat_id]
@@ -655,7 +682,7 @@ def process_delete_key(message):
         bot.send_message(chat_id, "❌ Key không tìm thấy!")
         return
     
-    file_path = os.path.join("/app/data", "keys", f"key{period}.txt")
+    file_path = os.path.join("data", "keys", f"key{period}.txt")
     
     try:
         keys.remove(key_to_delete)
