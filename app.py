@@ -247,7 +247,7 @@ def delete_key_from_file(period_code):
             return False
 
 def generate_key(period):
-    period_map_reverse = {"1 day": "1d", "7 day": "7d", "30 day": "30d", "90d": "90d"}
+    period_map_reverse = {"1 day": "1d", "7 day": "7d", "30 day": "30d", "90 day": "90d"}
     period_code = period_map_reverse.get(period, "30d")
     return get_key_from_file(period_code)
 
@@ -495,7 +495,7 @@ def check_mb_payment():
     mark_paid(uid)
     
     # Xóa key từ file và lưu vào key_solved.txt sau khi email gửi thành công
-    period_code_map_reverse = {"1 day": "1d", "7 day": "7d", "30 day": "30d", "90d": "90d"}
+    period_code_map_reverse = {"1 day": "1d", "7 day": "7d", "30 day": "30d", "90 day": "90d"}
     period_code = period_code_map_reverse.get(period, "30d")
     print(f"[FLOW] Email sent successfully. Now deleting key for period: '{period}' -> '{period_code}'")
     print(f"[FLOW] Key to delete: {key}")
