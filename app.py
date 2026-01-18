@@ -248,17 +248,16 @@ def send_key(email, key, uid, period="30 day"):
         }
         period_display = period_display_map.get(period, period)
 
-        # format template
+        # Replace template variables instead of using .format() to avoid issues with CSS braces
         try:
-            html_content = html_content.format(
-                uid=uid, 
-                key=key_for_email,
-                period=period_display,
-                link="https://tinyurl.com/2a999ad7"
-            ).replace("\r", "")
+            html_content = html_content.replace("{{uid}}", uid)
+            html_content = html_content.replace("{{key}}", key_for_email)
+            html_content = html_content.replace("{{period}}", period_display)
+            html_content = html_content.replace("{{link}}", "https://tinyurl.com/2a999ad7")
+            html_content = html_content.replace("\r", "")
         except Exception as e:
-            print(f"[EMAIL ERROR] Template format error: {e}")
-            return False, f"Template format error: {e}"
+            print(f"[EMAIL ERROR] Template replacement error: {e}")
+            return False, f"Template replacement error: {e}"
 
         # Gửi qua SendGrid
         try:
@@ -350,7 +349,7 @@ def check_mb_payment():
     order = get_order(uid)
     if not order:
         print(f"[ORDER ERROR] Order not found: uid={uid}")
-        return jsonify({"status": "error", "message": "Đơn hàng không tồn tại. Vui lòng refresh trang và thử lại"}), 404
+        return jsonify({"status": "error", "message": "Đơn hàng không tồn tại. Hãy đợi trong giây lát và ấn lại vào nút 'Nhận Key'"}), 404
     if order[6] == 1:
         return jsonify({"status": "ok", "message": "Đã thanh toán trước đó"}), 200
 
