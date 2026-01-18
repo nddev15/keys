@@ -20,10 +20,7 @@
       <span style="display:block;background:rgba(0,255,255,0.05);border:1px solid rgba(0,255,255,0.18);border-radius:6px;padding:10px 12px;color:#00eaff;font-family:monospace;font-size:13px;word-break:break-all;">{{period}}</span>
 
       <span style="font-weight:bold;color:#00ffff;display:block;margin-top:12px;margin-bottom:4px;">Key của bạn:</span>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="flex:1;display:block;background:rgba(0,255,255,0.05);border:1px solid rgba(0,255,255,0.18);border-radius:6px;padding:10px 12px;color:#00eaff;font-family:monospace;font-size:13px;word-break:break-all;" id="keyField">{{key}}</span>
-        <button onclick="copyToClipboard(document.getElementById('keyField').textContent)" style="background:rgba(0,255,255,0.2);border:1px solid rgba(0,255,255,0.4);border-radius:6px;padding:10px;cursor:pointer;color:#00ffff;font-size:14px;flex-shrink:0;transition:all 0.3s ease;" onmouseover="this.style.background='rgba(0,255,255,0.4)'" onmouseout="this.style.background='rgba(0,255,255,0.2)'">📋</button>
-      </div>
+      <span style="display:block;background:rgba(0,255,255,0.05);border:1px solid rgba(0,255,255,0.18);border-radius:6px;padding:10px 12px;color:#00eaff;font-family:monospace;font-size:13px;word-break:break-all;user-select:all;">{{key}}</span>
 
 
       <p style="margin-top:12px;font-size:13px;color:#bffcff;">Nếu chưa thấy key hoạt động, vui lòng ib Admin qua Zalo: <b>0979110280</b> hoặc Telegram: <b>@nguyenduc666</b></p>
@@ -36,7 +33,7 @@
         </div>
       </div>
 
-      <a href="https://tinyurl.com/2a999ad7" style="display:block;background-color:#00cc66;color:#ffffff;padding:12px;border-radius:12px;font-size:16px;font-weight:500;text-align:center;text-decoration:none;cursor:pointer;width:92%;margin:auto;">🎮 Cài Đặt</a>
+      <a href="https://tinyurl.com/2a999ad7" style="display:block;background-color:#00cc66;color:#ffffff;padding:12px;border-radius:12px;font-size:16px;font-weight:500;text-align:center;text-decoration:none;cursor:pointer;width:92%;margin:auto;" clicktracking="off">🎮 Cài Đặt</a>
 
       <div style="font-size:10px;color:#999;margin-top:16px;text-align:center;">
         © 2026 Muakey.pro | By <b>tuiducios.xyz</b>
@@ -44,14 +41,7 @@
     </div>
   </div>
 
-  <script>
-    function copyToClipboard(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        alert('Key đã được copy vào clipboard!');
-      }).catch(err => {
-        console.error('Failed to copy: ', err);
-      });
-    }
-  </script>
+
+
 </body>
 </html>
