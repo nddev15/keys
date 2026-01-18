@@ -469,7 +469,7 @@ def check_mb_payment():
                 coupon_used_flag = True  # Đánh dấu để dùng promo sau khi email gửi thành công
                 is_new_coupon_system = False  # Đánh dấu là old system
             else:
-                return jsonify({ day
+                return jsonify({
                     "status": "error",
                     "message": "Mã giảm giá không hợp lệ hoặc hết hạn"
                 }), 400
