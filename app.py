@@ -216,7 +216,7 @@ def delete_key_from_file(period_code):
         return False
 
 def generate_key(period):
-    period_map_reverse = {"1 day": "1d", "7 day": "7d", "30 day": "30d", "90 day": "90d"}
+    period_map_reverse = {"1 day": "1d", "7 day": "7d", "30 day": "30d", "90d": "90d"}
     period_code = period_map_reverse.get(period, "30d")
     return get_key_from_file(period_code)
 
@@ -260,16 +260,16 @@ def send_key(email, key, uid, period="30 day"):
             print(f"[EMAIL ERROR] Template format error: {e}")
             return False, f"Template format error: {e}"
 
-        # Gửi qua SendGrid - tối ưu timeout
+        # Gửi qua SendGrid
         try:
-            sg = SendGridAPIClient(SENDGRID_API_KEY, timeout=5)  # 5s timeout
+            sg = SendGridAPIClient(SENDGRID_API_KEY)
             message = Mail(
                 from_email=FROM_EMAIL,
                 to_emails=email,
                 subject="🔑 Key & Mã đơn hàng của bạn đã sẵn sàng!",
                 html_content=html_content
             )
-            response = sg.send(message, request_headers={'X-TEST-REQUEST': 'false'})
+            response = sg.send(message)
 
             if response.status_code == 202:
                 print(f"[EMAIL SENT] {email} ({uid})")
@@ -344,7 +344,7 @@ def check_mb_payment():
     if not uid or not email:
         return jsonify({"status": "error", "message": "Thiếu thông tin!"}), 400
 
-    period_map = {"1d": "1 day", "7d": "7 day", "30d": "30 day", "90d": "90d"}
+    period_map = {"1d": "1 day", "7d": "7 day", "30d": "30 day", "90d": "90 day"}
     period = period_map.get(period_code, "30 day")
 
     order = get_order(uid)
@@ -469,10 +469,14 @@ def check_mb_payment():
     mark_paid(uid)
     
     # Xóa key từ file và lưu vào key_solved.txt sau khi email gửi thành công
-    period_code_map_reverse = {"1 day": "1d", "7 day": "7d", "30 day": "30d", "90 day": "90d"}
+    period_code_map_reverse = {"1 day": "1d", "7 day": "7d", "30 day": "30d", "90d": "90d"}
     period_code = period_code_map_reverse.get(period, "30d")
-    print(f"[FLOW] Deleting key for period: {period_code}")
-    delete_key_from_file(period_code)
+    print(f"[FLOW] Email sent successfully. Now deleting key for period: {period} -> {period_code}")
+    success = delete_key_from_file(period_code)
+    if success:
+        print(f"[FLOW] ✅ Key deleted and moved to key_solved.txt")
+    else:
+        print(f"[FLOW] ⚠️ Warning: Failed to delete key, but email already sent")
     
     # Cập nhật số lượt dùng coupon sau khi email gửi thành công
     if coupon_used_flag:
