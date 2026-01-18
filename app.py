@@ -350,11 +350,7 @@ def check_mb_payment():
     order = get_order(uid)
     if not order:
         print(f"[ORDER ERROR] Order not found: uid={uid}")
-        # Thử tạo order mới nếu chưa tồn tại (race condition fallback)
-        insert_order(uid, generate_verification_code())
-        order = get_order(uid)
-        if not order:
-            return jsonify({"status": "error", "message": "Đơn hàng không tồn tại. Vui lòng refresh trang và thử lại"}), 404
+        return jsonify({"status": "error", "message": "Đơn hàng không tồn tại. Vui lòng refresh trang và thử lại"}), 404
     if order[6] == 1:
         return jsonify({"status": "ok", "message": "Đã thanh toán trước đó"}), 200
 
