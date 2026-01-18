@@ -270,12 +270,9 @@ btn.addEventListener('click',async ()=>{
   const promo_code=couponInput.value.trim().toUpperCase();
   const selected=durationSelect.options[durationSelect.selectedIndex];
   const period=selected.value;
-  let amount=parseInt(selected.getAttribute("data-amount").replace(/,/g, ""));
+  const amount=parseInt(selected.getAttribute("data-amount").replace(/,/g, ""));
   
-  // Áp discount nếu có
-  if(appliedDiscount > 0){
-    amount = amount - (amount * appliedDiscount / 100);
-  }
+  // KHÔNG tính discount ở đây! Backend sẽ tính
 
   if(!email){ alert("⚠️ Nhập email trước!"); return; }
 
