@@ -395,7 +395,9 @@ def check_mb_payment():
 
         # Kiểm tra amount (nhanh, không cần parse)
         try:
-            credit = int(tx.get("amount", "0"))
+            # Amount có thể là string với dấu phân cách: "1,000" hoặc "1.000"
+            amount_str = tx.get("amount", "0").replace(",", "").replace(".", "")
+            credit = int(amount_str)
         except:
             continue
         
