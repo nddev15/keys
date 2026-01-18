@@ -211,16 +211,21 @@ def get_key_from_file(period_code):
             traceback.print_exc()
             return None
 
-def delete_key_from_file(period_code):
-    """Xóa key đầu tiên từ TẤT CẢ file key và lưu vào key_solved.txt"""
+def delete_key_from_file(key_to_delete):
+    """Xóa key cụ thể từ TẤT CẢ file key và lưu vào key_solved.txt"""
+    if not key_to_delete:
+        print(f"[DELETE_KEY] ❌ No key provided")
+        return False
+    
     solved_file = get_solved_file_path()
     keys_dir = os.path.join("data", "keys")
     key_files = ["key1d.txt", "key7d.txt", "key30d.txt", "key90d.txt"]
     
     try:
-        # Tìm key đầu tiên từ tất cả các file
-        key_to_delete = None
-        source_file = None
+        print(f"[DELETE_KEY] ✅ Deleting key: {key_to_delete} from all files...")
+        
+        # Xóa key này từ TẤT CẢ các file
+        removed_from = []
         
         for key_file in key_files:
             full_path = os.path.join(keys_dir, key_file)
@@ -230,38 +235,12 @@ def delete_key_from_file(period_code):
             
             try:
                 with open(full_path, "r", encoding="utf-8") as f:
-                    lines = f.readlines()
-                
-                if lines and lines[0].strip():
-                    key_to_delete = lines[0].strip()
-                    source_file = full_path
-                    print(f"[DELETE_KEY] Found first key in {full_path}: {key_to_delete}")
-                    break
-            except Exception as e:
-                print(f"[DELETE_KEY] Error reading {full_path}: {e}")
-                continue
-        
-        if not key_to_delete:
-            print(f"[DELETE_KEY] ❌ No key found in any file")
-            return False
-        
-        print(f"[DELETE_KEY] ✅ Found key: {key_to_delete} from {source_file}")
-        
-        # Bước 2: Xóa key này từ TẤT CẢ các file
-        print(f"[DELETE_KEY] Now removing '{key_to_delete}' from all key files...")
-        removed_from = []
-        
-        for key_file in key_files:
-            full_path = os.path.join(keys_dir, key_file)
-            if not os.path.exists(full_path):
-                continue
-            
-            try:
-                with open(full_path, "r", encoding="utf-8") as f:
                     file_lines = f.readlines()
                 
-                # Lọc ra các dòng không chứa key này
+                # Đếm key cần xóa
                 original_count = len([l for l in file_lines if l.strip() == key_to_delete])
+                
+                # Lọc ra các dòng không chứa key này
                 new_lines = [line for line in file_lines if line.strip() != key_to_delete]
                 
                 if original_count > 0:
@@ -273,7 +252,7 @@ def delete_key_from_file(period_code):
             except Exception as e:
                 print(f"[DELETE_KEY] ❌ Failed to process {full_path}: {e}")
         
-        # Bước 3: Lưu key vào key_solved.txt
+        # Lưu key vào key_solved.txt
         solved_dir = os.path.dirname(solved_file)
         os.makedirs(solved_dir, exist_ok=True)
         
@@ -285,8 +264,13 @@ def delete_key_from_file(period_code):
         except Exception as e:
             print(f"[DELETE_KEY] ⚠️  Warning: Key removed from source but failed to save to solved file: {e}")
         
-        print(f"[DELETE_KEY] ✅ COMPLETED: Removed '{key_to_delete}' from {removed_from if removed_from else 'no files'}")
-        return True
+        if removed_from:
+            print(f"[DELETE_KEY] ✅ COMPLETED: Successfully removed '{key_to_delete}' from {removed_from}")
+            return True
+        else:
+            print(f"[DELETE_KEY] ⚠️  WARNING: Key '{key_to_delete}' was not found in any file")
+            # Vẫn trả True vì có thể key đã bị xóa trước đó
+            return True
         
     except Exception as e:
         print(f"[DELETE_KEY] ❌ Exception: {e}")
@@ -548,7 +532,7 @@ def check_mb_payment():
     # Xóa key từ file và lưu vào key_solved.txt sau khi email gửi thành công
     print(f"[FLOW] Email sent successfully. Now deleting key...")
     print(f"[FLOW] Key to delete: {key}")
-    success = delete_key_from_file(None)  # Hàm tự tìm key đầu tiên
+    success = delete_key_from_file(key)  # Truyền key vào hàm
     if success:
         print(f"[FLOW] ✅ Key deleted and moved to key_solved.txt")
     else:
