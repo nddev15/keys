@@ -85,6 +85,11 @@ label{display:block;font-size:13px;color:#88faff;margin-bottom:6px;text-transfor
       </div>
       <p id="couponInfo" style="font-size:12px;color:#ffaa00;margin:4px 0;"></p>
       
+      <p id="keyStatus" style="display:none;margin:12px 0;padding:12px;background:rgba(0,200,100,0.15);border:1px solid rgba(0,200,100,0.4);border-radius:6px;color:#00cc66;font-size:13px;">
+        <b>✅ Key của bạn:</b><br>
+        <span id="receivedKey" style="font-family:monospace;font-weight:bold;word-break:break-all;"></span>
+      </p>
+      
       <br>
       <button id="checkBtn">Nhận Key</button>
       <p id="status"></p>
@@ -291,11 +296,17 @@ btn.addEventListener('click',async ()=>{
       const d=data.data||{};
       const discount=d.discount_percent||0;
       const finalAmount=d.final_amount||amount;
+      const receivedKey=d.key||"N/A";
 
       statusEl.innerText=`Số tiền: ${finalAmount.toLocaleString()}đ`;
 
       updateQR(finalAmount);
-      document.getElementById('code').innerText=d.key||code;
+      
+      // Hiển thị key ở ô riêng, KHÔNG thay đổi mã nội dung
+      const keyStatusEl=document.getElementById('keyStatus');
+      const receivedKeyEl=document.getElementById('receivedKey');
+      receivedKeyEl.innerText=receivedKey;
+      keyStatusEl.style.display='block';
 
       statusEl.innerText+="\n✅ Thành công! Trang sẽ reload sau 3s...";
       setTimeout(()=>location.reload(),3000);
@@ -309,6 +320,109 @@ btn.addEventListener('click',async ()=>{
 
   startCooldown(35);
 });
+
+// // ========== Pagination Controls ==========
+// let currentPage = 1;
+// const paginationContent = [
+//   {
+//     title: "Trang 1 - Mua Key",
+//     description: "Chọn gói key phù hợp với nhu cầu của bạn"
+//   },
+//   {
+//     title: "Trang 2 - Hướng dẫn chi tiết",
+//     description: "Cách sử dụng key và các lưu ý quan trọng"
+//   },
+//   {
+//     title: "Trang 3 - Hỗ trợ và FAQ",
+//     description: "Các câu hỏi thường gặp và liên hệ hỗ trợ"
+//   }
+// ];
+
+// const backBtn = document.getElementById('backBtn');
+// const nextBtn = document.getElementById('nextBtn');
+// const pageInfo = document.getElementById('pageInfo');
+
+// function updatePaginationUI() {
+//   pageInfo.innerText = `Trang ${currentPage}/${paginationContent.length}`;
+//   backBtn.disabled = currentPage === 1;
+//   nextBtn.disabled = currentPage === paginationContent.length;
+// }
+
+// backBtn.addEventListener('click', () => {
+//   if (currentPage > 1) {
+//     currentPage--;
+//     updatePaginationUI();
+//     showPageContent();
+//     window.scrollTo({ top: 0, behavior: 'smooth' });
+//   }
+// });
+
+// nextBtn.addEventListener('click', () => {
+//   if (currentPage < paginationContent.length) {
+//     currentPage++;
+//     updatePaginationUI();
+//     showPageContent();
+//     window.scrollTo({ top: 0, behavior: 'smooth' });
+//   }
+// });
+
+// function showPageContent() {
+//   const cardHeader = document.querySelector('.card:nth-child(2) .card-header');
+//   const cardBody = document.querySelector('.card:nth-child(2) .card-body');
+  
+//   if (currentPage === 1) {
+//     cardHeader.innerText = '💻 Mua key ngay';
+//     // Reset to original content
+//     location.reload();
+//   } else if (currentPage === 2) {
+//     cardHeader.innerText = '📘 Hướng dẫn sử dụng';
+//     cardBody.innerHTML = `
+//       <div style="text-align:left;font-size:13px;line-height:1.6;color:#bffcff;">
+//         <h3 style="color:#00eaff;margin-bottom:10px;">📖 Cách sử dụng key AOV:</h3>
+//         <ol style="margin-left:20px;">
+//           <li>Mở ứng dụng AOV trên điện thoại</li>
+//           <li>Truy cập phần "Cửa hàng" hoặc "Shop"</li>
+//           <li>Chọn "Nạp Key" hoặc "Redeem Code"</li>
+//           <li>Paste mã key vừa nhận vào</li>
+//           <li>Nhấn "Xác nhận" để nhận quà</li>
+//         </ol>
+//         <h3 style="color:#00eaff;margin:15px 0 10px;">⚠️ Lưu ý quan trọng:</h3>
+//         <ul style="margin-left:20px;">
+//           <li>Mỗi key chỉ sử dụng được 1 lần duy nhất</li>
+//           <li>Key hết hạn sau thời gian quy định</li>
+//           <li>Không hoàn tiền nếu nhập sai key</li>
+//           <li>Giữ kín key của bạn, tránh chia sẻ</li>
+//         </ul>
+//       </div>
+//     `;
+//   } else if (currentPage === 3) {
+//     cardHeader.innerText = '❓ FAQ & Hỗ trợ';
+//     cardBody.innerHTML = `
+//       <div style="text-align:left;font-size:13px;line-height:1.6;color:#bffcff;">
+//         <h3 style="color:#00eaff;margin-bottom:10px;">❓ Các câu hỏi thường gặp:</h3>
+//         <div style="margin-bottom:12px;">
+//           <strong style="color:#00ff99;">Q: Key hết hạn sau bao lâu?</strong><br>
+//           A: Tùy vào gói bạn mua (1 ngày, 7 ngày, 1 tháng, 3 tháng)
+//         </div>
+//         <div style="margin-bottom:12px;">
+//           <strong style="color:#00ff99;">Q: Tôi nhập sai key, phải làm sao?</strong><br>
+//           A: Liên hệ hỗ trợ sớm nhất để được giúp đỡ
+//         </div>
+//         <div style="margin-bottom:12px;">
+//           <strong style="color:#00ff99;">Q: Có cách nào rẻ hơn không?</strong><br>
+//           A: Sử dụng mã giảm giá nếu bạn có
+//         </div>
+//         <h3 style="color:#00eaff;margin:15px 0 10px;">📞 Liên hệ hỗ trợ:</h3>
+//         <p>Zalo: <a href="https://zalo.me/0375053471" target="_blank" style="color:#00eaff;text-decoration:none;">0375053471</a></p>
+//         <p>Telegram: <a href="https://t.me/vaicaunoicokhiennguoithay_doi" target="_blank" style="color:#00eaff;text-decoration:none;">@SupportTeam</a></p>
+//       </div>
+//     `;
+//   }
+// }
+
+// // Initialize pagination UI
+// updatePaginationUI();
+
 </script>
 </body>
 </html>
