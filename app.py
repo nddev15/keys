@@ -2,6 +2,7 @@ import os
 import sqlite3
 import string
 import random
+import json
 from flask import Flask, request, jsonify, render_template
 import smtplib
 from email.mime.text import MIMEText
@@ -453,7 +454,7 @@ def load_prices():
     default_prices = {
         "1d": {"label": "1 Ngày", "amount": 25000, "currency": "VND"},
         "7d": {"label": "1 Tuần", "amount": 70000, "currency": "VND"},
-        "30d": {"label": "1 Tháng", "amount": 250000, "currency": "VND"},
+        "30d": {"label": "1 Tháng", "amount": 300000, "currency": "VND"},
         "90d": {"label": "1 Mùa", "amount": 600000, "currency": "VND"}
     }
     
