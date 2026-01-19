@@ -629,12 +629,18 @@ def xem_key(message):
         bot.send_message(chat_id, "❌ Bạn không có quyền sử dụng lệnh này!")
         return
     
+    # Get key counts
+    count_1d = len(get_keys_by_type("1 Ngày"))
+    count_7d = len(get_keys_by_type("1 Tuần"))
+    count_30d = len(get_keys_by_type("1 Tháng"))
+    count_90d = len(get_keys_by_type("1 Mùa"))
+    
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("1 Ngày (1d)", callback_data="view_keys_1 Ngày"),
-        types.InlineKeyboardButton("1 Tuần (7d)", callback_data="view_keys_1 Tuần"),
-        types.InlineKeyboardButton("1 Tháng (30d)", callback_data="view_keys_1 Tháng"),
-        types.InlineKeyboardButton("1 Mùa (90d)", callback_data="view_keys_1 Mùa")
+        types.InlineKeyboardButton(f"1 Ngày ({count_1d})", callback_data="view_keys_1 Ngày"),
+        types.InlineKeyboardButton(f"1 Tuần ({count_7d})", callback_data="view_keys_1 Tuần"),
+        types.InlineKeyboardButton(f"1 Tháng ({count_30d})", callback_data="view_keys_1 Tháng"),
+        types.InlineKeyboardButton(f"1 Mùa ({count_90d})", callback_data="view_keys_1 Mùa")
     )
     
     bot.send_message(chat_id, "🔑 <b>Chọn loại key:</b>", reply_markup=markup, parse_mode="HTML")
@@ -731,12 +737,18 @@ def back_to_key_types(call):
     try:
         chat_id = call.message.chat.id
         
+        # Get key counts
+        count_1d = len(get_keys_by_type("1 Ngày"))
+        count_7d = len(get_keys_by_type("1 Tuần"))
+        count_30d = len(get_keys_by_type("1 Tháng"))
+        count_90d = len(get_keys_by_type("1 Mùa"))
+        
         markup = types.InlineKeyboardMarkup(row_width=2)
         markup.add(
-            types.InlineKeyboardButton("1 Ngày (1d)", callback_data="view_keys_1 Ngày"),
-            types.InlineKeyboardButton("1 Tuần (7d)", callback_data="view_keys_1 Tuần"),
-            types.InlineKeyboardButton("1 Tháng (30d)", callback_data="view_keys_1 Tháng"),
-            types.InlineKeyboardButton("1 Mùa (90d)", callback_data="view_keys_1 Mùa")
+            types.InlineKeyboardButton(f"1 Ngày ({count_1d})", callback_data="view_keys_1 Ngày"),
+            types.InlineKeyboardButton(f"1 Tuần ({count_7d})", callback_data="view_keys_1 Tuần"),
+            types.InlineKeyboardButton(f"1 Tháng ({count_30d})", callback_data="view_keys_1 Tháng"),
+            types.InlineKeyboardButton(f"1 Mùa ({count_90d})", callback_data="view_keys_1 Mùa")
         )
         
         bot.edit_message_text("🔑 <b>Chọn loại key:</b>", chat_id, call.message.message_id, 
@@ -870,16 +882,24 @@ def process_delete_period(message):
         return
     
     period = period_map[text]
-    file_path = os.path.join("data", "keys", f"key{period}.txt")
-    
-    if not os.path.exists(file_path):
-        del user_states[chat_id]
-        bot.send_message(chat_id, "❌ File key không tồn tại!")
-        return
     
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            lines = [line.strip() for line in f.readlines() if line.strip()]
+        # Try to get keys from GitHub first
+        github_mgr = get_github_manager()
+        lines = []
+        
+        if github_mgr.use_github:
+            print(f"[BOT] Fetching keys from GitHub for period: {period}")
+            lines = github_mgr.list_keys(period)
+            print(f"[BOT] Got {len(lines)} keys from GitHub")
+        
+        # Fallback to local file if GitHub is not available or returns empty
+        if not lines:
+            file_path = os.path.join("data", "keys", f"key{period}.txt")
+            if os.path.exists(file_path):
+                with open(file_path, "r", encoding="utf-8") as f:
+                    lines = [line.strip() for line in f.readlines() if line.strip()]
+                print(f"[BOT] Got {len(lines)} keys from local file")
         
         if not lines:
             del user_states[chat_id]
