@@ -1058,6 +1058,15 @@ if __name__ == "__main__":
     create_db()
     initialize_key_files()
     
+    # Sync keys from GitHub on startup
+    try:
+        from sync_keys import sync_keys_from_github, start_auto_sync
+        sync_keys_from_github()
+        # Start auto-sync in background
+        start_auto_sync()
+    except Exception as e:
+        print(f"[STARTUP] Warning: Failed to sync keys from GitHub: {e}")
+    
     # Start bot polling in a separate thread
     bot_thread = threading.Thread(target=start_bot, daemon=True)
     bot_thread.start()

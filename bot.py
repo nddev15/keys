@@ -604,12 +604,14 @@ def start(message):
     markup.add("/themcoupon", "/xoacoupon", "/couponhienco")
     markup.add("/xemgia", "/chinhgia")
     markup.add("/rutgonlink", "/showshortenurl")
+    markup.add("/synckeys")
     bot.send_message(message.chat.id, 
                     "👋 Chào mừng!\n\n"
                     "<b>📋 Key Management:</b>\n"
                     "/xemkey - Xem key chưa bán\n"
                     "/themkey - Thêm key mới\n"
-                    "/xoakey - Xóa key\n\n"
+                    "/xoakey - Xóa key\n"
+                    "/synckeys - Đồng bộ keys từ GitHub\n\n"
                     "<b>🎟️ Coupon Management:</b>\n"
                     "/themcoupon - Thêm mã giảm giá\n"
                     "/xoacoupon - Xóa mã giảm giá\n"
@@ -1629,6 +1631,43 @@ def process_new_price(message):
         bot.send_message(chat_id, f"❌ Lỗi: {e}")
         if chat_id in user_states:
             del user_states[chat_id]
+
+# =================== SYNC KEYS FROM GITHUB ===================
+
+@bot.message_handler(commands=['synckeys'])
+def sync_keys_command(message):
+    """Sync keys from GitHub repository"""
+    chat_id = message.chat.id
+    
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, "❌ Bạn không có quyền sử dụng lệnh này!")
+        return
+    
+    try:
+        from sync_keys import sync_keys_from_github
+        
+        bot.send_message(chat_id, "🔄 Đang đồng bộ keys từ GitHub...")
+        sync_keys_from_github()
+        
+        # Get updated counts
+        count_1d = len(get_keys_by_type("1 Ngày"))
+        count_7d = len(get_keys_by_type("1 Tuần"))
+        count_30d = len(get_keys_by_type("1 Tháng"))
+        count_90d = len(get_keys_by_type("1 Mùa"))
+        
+        msg = (
+            "✅ <b>Đồng bộ hoàn tất!</b>\n\n"
+            f"📊 Key hiện có:\n"
+            f"• 1 Ngày: {count_1d}\n"
+            f"• 1 Tuần: {count_7d}\n"
+            f"• 1 Tháng: {count_30d}\n"
+            f"• 1 Mùa: {count_90d}"
+        )
+        bot.send_message(chat_id, msg, parse_mode="HTML")
+        
+    except Exception as e:
+        print(f"[SYNC ERROR] {e}")
+        bot.send_message(chat_id, f"❌ Lỗi đồng bộ: {e}")
 
 # =================== Bot Polling ===================
 
