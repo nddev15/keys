@@ -315,6 +315,22 @@ def initialize_key_files():
                     print(f"[INIT] Restored {key_type} from image")
                 except Exception as e:
                     print(f"[INIT] Failed to restore {key_type}: {e}")
+    
+    # Check and restore prices.json if empty or missing
+    prices_file = "data/prices/prices.json"
+    if not os.path.exists(prices_file) or os.path.getsize(prices_file) == 0:
+        print("[INIT] prices.json is empty or missing. Attempting to restore from build image...")
+        source_path = "/app/initial_data/prices.json"
+        if os.path.exists(source_path):
+            try:
+                with open(source_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                os.makedirs(os.path.dirname(prices_file), exist_ok=True)
+                with open(prices_file, "w", encoding="utf-8") as f:
+                    f.write(content)
+                print("[INIT] Restored prices.json from image")
+            except Exception as e:
+                print(f"[INIT] Failed to restore prices.json: {e}")
 
 # Lock for file operations to prevent race conditions
 file_locks = {}
