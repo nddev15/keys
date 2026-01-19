@@ -12,7 +12,7 @@ RUN mkdir -p /app/initial_data && \
     cp /app/data/keys/key*.txt /app/initial_data/ 2>/dev/null || true
 
 # Ensure data directories exist with write permissions
-RUN mkdir -p /app/data/keys /app/data/coupon /app/data/links /app/data/shortenurl && \
+RUN mkdir -p /app/data/keys /app/data/coupon /app/data/links /app/data/shortenurl /app/data/prices && \
     chmod -R 777 /app/data && \
     ls -la /app/data/keys/
 
