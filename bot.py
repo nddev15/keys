@@ -602,6 +602,7 @@ def start(message):
     markup = types.ReplyKeyboardMarkup(row_width=2)
     markup.add("/xemkey", "/themkey", "/xoakey")
     markup.add("/themcoupon", "/xoacoupon", "/couponhienco")
+    markup.add("/xemgia", "/chinhgia")
     markup.add("/rutgonlink", "/showshortenurl")
     bot.send_message(message.chat.id, 
                     "👋 Chào mừng!\n\n"
@@ -613,6 +614,9 @@ def start(message):
                     "/themcoupon - Thêm mã giảm giá\n"
                     "/xoacoupon - Xóa mã giảm giá\n"
                     "/couponhienco - Xem mã giảm giá hiện có\n\n"
+                    "<b>💰 Prices Management:</b>\n"
+                    "/xemgia - Xem bảng giá hiện tại\n"
+                    "/chinhgia - Chỉnh sửa giá\n\n"
                     "<b>🔗 Tools:</b>\n"
                     "/rutgonlink - Rút gọn link (TinyURL/is.gd)\n"
                     "/showshortenurl - Xem tất cả link rút gọn\n",
@@ -910,14 +914,19 @@ def process_delete_period(message):
         user_states[chat_id]["keys"] = lines
         user_states[chat_id]["step"] = "waiting_delete_key"
         
-        markup = types.ReplyKeyboardRemove()
-        keys_list = "\n".join([f"{i+1}. {k}" for i, k in enumerate(lines[:10])])
-        msg = f"📋 Chọn key để xóa (danh sách 10 key đầu):\n\n{keys_list}"
+        # Tạo ReplyKeyboardMarkup với danh sách keys
+        markup = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
+        
+        # Hiển thị tối đa 10 keys trong button
+        display_keys = lines[:10]
+        for key in display_keys:
+            markup.add(key)
+        
+        msg = f"📋 Chọn key để xóa:\n\n"
+        msg += f"Tổng số key: {len(lines)}\n"
         
         if len(lines) > 10:
-            msg += f"\n\n... và {len(lines) - 10} key khác"
-        
-        msg += "\n\nGửi key bạn muốn xóa:"
+            msg += f"(Hiển thị 10/{len(lines)} key đầu tiên)"
         
         bot.send_message(chat_id, msg, reply_markup=markup)
         
@@ -957,7 +966,9 @@ def process_delete_key(message):
         
         del user_states[chat_id]
         
-        bot.send_message(chat_id, f"✅ Đã xóa key:\n{key_to_delete}")
+        # Remove keyboard after deletion
+        markup = types.ReplyKeyboardRemove()
+        bot.send_message(chat_id, f"✅ Đã xóa key:\n{key_to_delete}", reply_markup=markup)
         
         # Notify admin
         tg_msg = f"➖ <b>Xóa key</b>\nLoại: {period}\nKey: {key_to_delete}"
@@ -1460,6 +1471,164 @@ def show_urls_callback(call):
             message += "─" * 40 + "\n"
     
     bot.send_message(chat_id, message, parse_mode="HTML")
+
+# =================== PRICES MANAGEMENT ===================
+
+def load_prices():
+    """Load prices from JSON file"""
+    price_file = os.path.join("data", "prices", "prices.json")
+    
+    # Default prices if file doesn't exist
+    default_prices = {
+        "1d": {"label": "1 Ngày", "amount": 25000, "currency": "VND"},
+        "7d": {"label": "1 Tuần", "amount": 70000, "currency": "VND"},
+        "30d": {"label": "1 Tháng", "amount": 250000, "currency": "VND"},
+        "90d": {"label": "1 Mùa", "amount": 600000, "currency": "VND"}
+    }
+    
+    try:
+        if os.path.exists(price_file):
+            with open(price_file, "r", encoding="utf-8") as f:
+                prices = json.load(f)
+                return prices if prices else default_prices
+        return default_prices
+    except Exception as e:
+        print(f"[PRICES ERROR] Failed to load prices: {e}")
+        return default_prices
+
+def save_prices(prices):
+    """Save prices to JSON file"""
+    price_file = os.path.join("data", "prices", "prices.json")
+    
+    try:
+        os.makedirs(os.path.dirname(price_file), exist_ok=True)
+        with open(price_file, "w", encoding="utf-8") as f:
+            json.dump(prices, f, indent=4, ensure_ascii=False)
+        print(f"[PRICES] Saved prices to {price_file}")
+        return True
+    except Exception as e:
+        print(f"[PRICES ERROR] Failed to save prices: {e}")
+        return False
+
+@bot.message_handler(commands=['xemgia'])
+def xem_gia(message):
+    """View current prices"""
+    chat_id = message.chat.id
+    
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, "❌ Bạn không có quyền sử dụng lệnh này!")
+        return
+    
+    prices = load_prices()
+    
+    msg = "💰 <b>Bảng giá hiện tại:</b>\n\n"
+    for period_code, data in prices.items():
+        label = data.get("label", period_code)
+        amount = data.get("amount", 0)
+        currency = data.get("currency", "VND")
+        msg += f"<b>{label} ({period_code}):</b> {amount:,} {currency}\n"
+    
+    bot.send_message(chat_id, msg, parse_mode="HTML")
+
+@bot.message_handler(commands=['chinhgia'])
+def chinh_gia(message):
+    """Start editing price"""
+    chat_id = message.chat.id
+    
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, "❌ Bạn không có quyền sử dụng lệnh này!")
+        return
+    
+    user_states[chat_id] = {"step": "waiting_price_period"}
+    
+    markup = types.ReplyKeyboardMarkup(row_width=2)
+    markup.add("1 Ngày (1d)", "1 Tuần (7d)", "1 Tháng (30d)", "1 Mùa (90d)")
+    
+    bot.send_message(chat_id, "💰 Chọn loại key để chỉnh giá:", reply_markup=markup)
+
+@bot.message_handler(func=lambda message: user_states.get(message.chat.id, {}).get("step") == "waiting_price_period")
+def process_price_period(message):
+    """Process period for price editing"""
+    chat_id = message.chat.id
+    text = message.text
+    
+    period_map = {
+        "1 Ngày (1d)": "1d",
+        "1 Tuần (7d)": "7d",
+        "1 Tháng (30d)": "30d",
+        "1 Mùa (90d)": "90d"
+    }
+    
+    if text not in period_map:
+        bot.send_message(chat_id, "❌ Lựa chọn không hợp lệ. Vui lòng chọn lại!")
+        return
+    
+    period_code = period_map[text]
+    prices = load_prices()
+    current_price = prices.get(period_code, {}).get("amount", 0)
+    
+    user_states[chat_id]["period_code"] = period_code
+    user_states[chat_id]["period_label"] = text
+    user_states[chat_id]["step"] = "waiting_new_price"
+    
+    markup = types.ReplyKeyboardRemove()
+    bot.send_message(chat_id, 
+                    f"📝 Nhập giá mới cho {text}:\n\nGiá hiện tại: {current_price:,} VND",
+                    reply_markup=markup)
+
+@bot.message_handler(func=lambda message: user_states.get(message.chat.id, {}).get("step") == "waiting_new_price")
+def process_new_price(message):
+    """Process and save new price"""
+    chat_id = message.chat.id
+    price_text = message.text.strip().replace(",", "").replace(".", "")
+    
+    try:
+        new_price = int(price_text)
+        
+        if new_price <= 0:
+            bot.send_message(chat_id, "❌ Giá phải lớn hơn 0!")
+            return
+        
+        period_code = user_states[chat_id]["period_code"]
+        period_label = user_states[chat_id]["period_label"]
+        
+        # Load and update prices
+        prices = load_prices()
+        old_price = prices.get(period_code, {}).get("amount", 0)
+        
+        if period_code in prices:
+            prices[period_code]["amount"] = new_price
+        else:
+            prices[period_code] = {
+                "label": period_label.split(" (")[0],
+                "amount": new_price,
+                "currency": "VND"
+            }
+        
+        # Save prices
+        if save_prices(prices):
+            del user_states[chat_id]
+            
+            msg = f"✅ Đã cập nhật giá:\n\n"
+            msg += f"<b>{period_label}</b>\n"
+            msg += f"Giá cũ: {old_price:,} VND\n"
+            msg += f"Giá mới: {new_price:,} VND"
+            
+            bot.send_message(chat_id, msg, parse_mode="HTML")
+            
+            # Notify admin
+            tg_msg = f"💰 <b>Cập nhật giá</b>\n{period_label}\n{old_price:,} VND → {new_price:,} VND"
+            send_telegram(tg_msg)
+        else:
+            bot.send_message(chat_id, "❌ Lỗi lưu giá!")
+            
+    except ValueError:
+        bot.send_message(chat_id, "❌ Giá không hợp lệ! Vui lòng nhập số.")
+    except Exception as e:
+        print(f"[PRICE ERROR] {e}")
+        bot.send_message(chat_id, f"❌ Lỗi: {e}")
+        if chat_id in user_states:
+            del user_states[chat_id]
 
 # =================== Bot Polling ===================
 

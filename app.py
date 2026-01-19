@@ -117,7 +117,7 @@ class GitHubDataManager:
             print(f"[GITHUB] ❌ Exception updating file: {e}")
             return False
 
-    def delete_key_and_save_solved(self, key_to_delete):
+    def delete_key_and_save_solved(self, key_to_delete, email=None):
         """Delete key from data/keys/*.txt and save to data/keys/key_solved.txt"""
         if not self.use_github:
             return False
@@ -178,7 +178,8 @@ class GitHubDataManager:
                 current_content = ""
             
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            new_entry = f"{key_to_delete} | {timestamp}\n"
+            email_part = f" | {email}" if email else ""
+            new_entry = f"{key_to_delete} | {timestamp}{email_part}\n"
             
             new_content = (current_content + new_entry) if current_content else new_entry
             
@@ -427,6 +428,48 @@ def log_key_delivery(uid, email, key, period, status="sent"):
     conn.close()
     print(f"[TRACKING] Logged delivery: UID={uid}, Email={email}, Key={key}, Period={period}, Status={status}")
 
+# =================== Prices Management ===================
+def load_prices():
+    """Load prices from JSON file"""
+    price_file = os.path.join("data", "prices", "prices.json")
+    
+    # Default prices if file doesn't exist
+    default_prices = {
+        "1d": {"label": "1 Ngày", "amount": 25000, "currency": "VND"},
+        "7d": {"label": "1 Tuần", "amount": 70000, "currency": "VND"},
+        "30d": {"label": "1 Tháng", "amount": 250000, "currency": "VND"},
+        "90d": {"label": "1 Mùa", "amount": 600000, "currency": "VND"}
+    }
+    
+    try:
+        if os.path.exists(price_file):
+            with open(price_file, "r", encoding="utf-8") as f:
+                prices = json.load(f)
+                return prices if prices else default_prices
+        return default_prices
+    except Exception as e:
+        print(f"[PRICES ERROR] Failed to load prices: {e}")
+        return default_prices
+
+def save_prices(prices):
+    """Save prices to JSON file"""
+    price_file = os.path.join("data", "prices", "prices.json")
+    
+    try:
+        os.makedirs(os.path.dirname(price_file), exist_ok=True)
+        with open(price_file, "w", encoding="utf-8") as f:
+            json.dump(prices, f, indent=4, ensure_ascii=False)
+        print(f"[PRICES] Saved prices to {price_file}")
+        return True
+    except Exception as e:
+        print(f"[PRICES ERROR] Failed to save prices: {e}")
+        return False
+
+def get_price(period_code):
+    """Get price for a specific period"""
+    prices = load_prices()
+    return prices.get(period_code, {}).get("amount", 0)
+
 # =================== Utils ===================
 def get_key_file_path(period_code):
     """Get correct key file path"""
@@ -497,7 +540,7 @@ def get_key_from_file(period_code):
             traceback.print_exc()
             return None
 
-def delete_key_from_file(key_to_delete):
+def delete_key_from_file(key_to_delete, email=None):
     """
     Xóa key cụ thể từ TẤT CẢ file key và lưu vào key_solved.txt
     
@@ -514,7 +557,7 @@ def delete_key_from_file(key_to_delete):
     github_mgr = get_github_manager()
     if github_mgr.use_github:
         print("[DELETE_KEY] 🔄 Using GitHub API to update data...")
-        success = github_mgr.delete_key_and_save_solved(key_to_delete)
+        success = github_mgr.delete_key_and_save_solved(key_to_delete, email)
         if success:
             print("[DELETE_KEY] ✅ GitHub API update successful")
             return True
@@ -582,7 +625,8 @@ def delete_key_from_file(key_to_delete):
         try:
             with open(solved_file, "a", encoding="utf-8") as f:
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                f.write(f"{key_to_delete} | {timestamp}\n")
+                email_part = f" | {email}" if email else ""
+                f.write(f"{key_to_delete} | {timestamp}{email_part}\n")
                 f.flush()
                 os.fsync(f.fileno())
             print(f"[DELETE_KEY] ✅ Successfully saved to {solved_file}")
@@ -686,11 +730,15 @@ def index():
     uid = generate_uid()
     code = generate_verification_code()
     insert_order(uid, code)
+    
+    # Load prices from JSON file
+    prices = load_prices()
+    
     durations = [
-        {"category": "v1", "label": "1 Ngày", "value": "1d", "amount": 25000, "key_count": count_keys("1d")},
-        {"category": "v1", "label": "1 Tuần", "value": "7d", "amount": 70000, "key_count": count_keys("7d")},
-        {"category": "v1", "label": "1 Tháng", "value": "30d", "amount": 250000, "key_count": count_keys("30d")},
-        {"category": "v1", "label": "1 Mùa", "value": "90d", "amount": 600000, "key_count": count_keys("90d")},
+        {"category": "v1", "label": prices["1d"]["label"], "value": "1d", "amount": prices["1d"]["amount"], "key_count": count_keys("1d")},
+        {"category": "v1", "label": prices["7d"]["label"], "value": "7d", "amount": prices["7d"]["amount"], "key_count": count_keys("7d")},
+        {"category": "v1", "label": prices["30d"]["label"], "value": "30d", "amount": prices["30d"]["amount"], "key_count": count_keys("30d")},
+        {"category": "v1", "label": prices["90d"]["label"], "value": "90d", "amount": prices["90d"]["amount"], "key_count": count_keys("90d")},
     ]
     return render_template("index.html", uid=uid, code=code, durations=durations)
 
@@ -862,7 +910,7 @@ def check_mb_payment():
     # Xóa key từ file và lưu vào key_solved.txt sau khi email gửi thành công
     print(f"[FLOW] Email sent successfully. Now deleting key...")
     print(f"[FLOW] Key to delete: {key}")
-    success = delete_key_from_file(key)  # Truyền key vào hàm
+    success = delete_key_from_file(key, email)  # Truyền key và email vào hàm
     if success:
         print(f"[FLOW] ✅ Key deleted and moved to key_solved.txt")
     else:

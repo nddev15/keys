@@ -1,0 +1,22 @@
+{
+    "1d": {
+        "label": "1 Ngày",
+        "amount": 25000,
+        "currency": "VND"
+    },
+    "7d": {
+        "label": "1 Tuần",
+        "amount": 150000,
+        "currency": "VND"
+    },
+    "30d": {
+        "label": "1 Tháng",
+        "amount": 300000,
+        "currency": "VND"
+    },
+    "90d": {
+        "label": "1 Mùa",
+        "amount": 700000,
+        "currency": "VND"
+    }
+}
