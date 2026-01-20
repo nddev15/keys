@@ -42,40 +42,53 @@ body::after{
 /* Terminal */
 .terminal{
   width:100%;
-  background:#0a0a0a;
-  border:1px solid rgba(0,200,100,0.25);
-  border-radius:14px;
-  box-shadow:0 8px 32px rgba(0,0,0,0.5), 0 0 40px rgba(0,200,100,0.08), inset 0 1px 0 rgba(0,200,100,0.1);
+  background:#000000;
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.8), 0 0 1px rgba(255,255,255,0.1);
   overflow:hidden;
-  font-family:'SF Mono',Consolas,monospace;
+  font-family:'SF Mono','Monaco',Consolas,monospace;
 }
 .terminal-header{
-  background:#1a1a1a;
-  color:#00cc88;padding:12px 16px;
-  font-weight:600;font-size:13px;
+  background:linear-gradient(to bottom, #2d2d2d, #1f1f1f);
+  padding:10px 16px;
   display:flex;align-items:center;gap:8px;
-  letter-spacing:0.5px;
-  border-bottom:1px solid rgba(0,200,100,0.1);
+  border-bottom:1px solid #0a0a0a;
 }
-.terminal-header::before{
-  content:"●●●";
-  color:#666;letter-spacing:4px;
-  font-size:16px;margin-right:8px;
+.terminal-dots{
+  display:flex;gap:8px;
+  margin-right:auto;
+}
+.terminal-dot{
+  width:12px;height:12px;
+  border-radius:50%;
+}
+.terminal-dot.red{background:#ff5f56;box-shadow:0 0 3px #ff5f56;}
+.terminal-dot.yellow{background:#ffbd2e;box-shadow:0 0 3px #ffbd2e;}
+.terminal-dot.green{background:#27c93f;box-shadow:0 0 3px #27c93f;}
+.terminal-title{
+  position:absolute;left:50%;transform:translateX(-50%);
+  font-size:12px;color:#999;font-weight:500;
 }
 .terminal-body{
-  padding:16px;font-size:13px;color:#00ff99;
-  height:120px;max-height:250px;overflow-y:auto;line-height:1.6;
-  white-space:pre-wrap;
-  background:linear-gradient(to bottom, #0a0a0a, rgba(0,200,100,0.02));
-  background-attachment:fixed;
+  padding:16px;font-size:13px;
+  height:180px;max-height:250px;overflow-y:auto;line-height:1.8;
+  background:#000000;
   scrollbar-width:thin;
-  scrollbar-color:#00ff99 #0a0a0a;
+  scrollbar-color:#333 #000;
 }
-.terminal-body::-webkit-scrollbar{width:6px;}
-.terminal-body::-webkit-scrollbar-track{background:#0a0a0a;}
-.terminal-body::-webkit-scrollbar-thumb{background:#00ff99;border-radius:3px;}
-.terminal-line{margin-bottom:2px;font-weight:500;}
-.terminal-line::before{content:"$ ";color:#00cc88;opacity:0.7;margin-right:6px;}
+.terminal-body::-webkit-scrollbar{width:8px;}
+.terminal-body::-webkit-scrollbar-track{background:#000;}
+.terminal-body::-webkit-scrollbar-thumb{background:#333;border-radius:4px;}
+.terminal-line{margin-bottom:4px;display:flex;align-items:flex-start;gap:8px;}
+.terminal-line .prompt{color:#8a8a8a;flex-shrink:0;}
+.terminal-line .cmd{color:#c7c7c7;}
+.terminal-line .check{color:#00d000;flex-shrink:0;}
+.terminal-line .text{color:#00d000;}
+.terminal-line .info{color:#5b9aff;}
+.terminal-line .highlight{color:#ffd700;}
+.terminal-line .url{color:#999;}
+.terminal-line .tip{color:#8a8a8a;}
 
 /* Cards */
 .card{
@@ -254,6 +267,44 @@ label,.text1{
 }
 .footer a{color:#00d4ff;text-decoration:none;}
 
+/* Loading Screen */
+.loading-screen{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:linear-gradient(145deg, #0a0a0f 0%, #0d1117 50%, #0a0e14 100%);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;
+  transition:opacity 0.5s ease, visibility 0.5s ease;
+}
+.loading-screen.hidden{
+  opacity:0;visibility:hidden;
+}
+.loading-content{
+  text-align:center;
+}
+.spinner{
+  width:50px;height:50px;margin:0 auto 20px;
+  border:3px solid rgba(0,212,255,0.1);
+  border-top:3px solid #00d4ff;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{
+  0%{transform:rotate(0deg);}
+  100%{transform:rotate(360deg);}
+}
+.loading-text{
+  font-size:24px;font-weight:700;
+  background:linear-gradient(90deg, #00d4ff, #00ff99);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  margin-bottom:8px;
+}
+.loading-subtext{
+  font-size:13px;color:#64748b;
+  letter-spacing:2px;
+}
+
 /* Flex utilities */
 .flex{display:flex;}
 .items-center{align-items:center;}
@@ -267,15 +318,25 @@ label,.text1{
 </head>
 <body>
 
+<!-- Loading Screen -->
+<div id="loadingScreen" class="loading-screen">
+  <div class="loading-content">
+    <div class="spinner"></div>
+    <div class="loading-text">666CHEAT Store</div>
+    <div class="loading-subtext">Loading...</div>
+  </div>
+</div>
+
 <div class="wrapper">
   <!-- Terminal -->
   <div class="terminal">
     <div class="terminal-header">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <polyline points="4 17 10 11 4 5"></polyline>
-        <line x1="12" y1="19" x2="20" y2="19"></line>
-      </svg>
-      Terminal
+      <div class="terminal-dots">
+        <div class="terminal-dot red"></div>
+        <div class="terminal-dot yellow"></div>
+        <div class="terminal-dot green"></div>
+      </div>
+      <div class="terminal-title">pnpm run dev</div>
     </div>
     <div class="terminal-body" id="terminal" aria-live="polite"></div>
   </div>
@@ -340,8 +401,8 @@ label,.text1{
       
       <div class="flex gap-2 mt-3">
         <input type="text" id="coupon" placeholder="Mã giảm giá (nếu có)" style="flex:1;">
-        <button id="testCouponBtn" class="btn-glass btn-sm" style="white-space:nowrap;padding:10px 14px;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <button id="testCouponBtn" class="btn-glass btn-sm" style="white-space:nowrap;padding:8px 12px;border-radius:16px;font-size:11px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
           Kiểm tra
@@ -423,26 +484,36 @@ label,.text1{
 <script>
 const terminalEl = document.getElementById('terminal');
 const lines = [
-  "Welcome to 666CHEAT Store 🎮",
-  "Chào mừng bạn đến với Cheat AOV Store",
-  "Xem hướng dẫn bên dưới nếu bạn là người mới!",
-  "Cảm ơn bạn đã ủng hộ ❤️",
-  "666CHEAT With Love <3"
+  {type:'cmd',text:'> pnpm run dev'},
+  {type:'success',text:'✓ Starting development server...'},
+  {type:'success',text:'✓ Compiling Store component bundle...'},
+  {type:'success',text:'✓ Loading configuration...'},
+  {type:'success',text:'✓ Building interactive preview...'},
+  {type:'info',text:'[info] Live reload enabled.'},
+  {type:'info',text:'[info] Detected components:'},
+  {type:'highlight',text:'      KeyStore, PaymentGlow, NeonHeader'},
+  {type:'info',text:'[info] Watching for file changes...'},
+  {type:'build',text:'✅ Build successful in 1.2s'},
+  {type:'url',text:'Local:   https://muakey.cloud'},
+  {type:'tip',text:'> tip: Ready to accept orders 🎮'}
 ];
 let lineIndex=0, charIndex=0, currentLine='';
 
 function typeTick(){
-  if(lineIndex>=lines.length){ return; }
+  if(!lines[lineIndex])return;
   const line=lines[lineIndex];
-  if(charIndex<line.length){
-    currentLine+=line[charIndex++];
-    renderTerminal(currentLine+'▌');
+  const text=typeof line==='string'?line:line.text;
+  
+  if(charIndex<text.length){
+    currentLine+=text[charIndex];
+    charIndex++;
+    renderTerminal(currentLine+'<span style="opacity:0.5">_</span>');
     terminalEl.scrollTop=terminalEl.scrollHeight;
-    setTimeout(typeTick,25+Math.random()*35);
+    setTimeout(typeTick,15+Math.random()*20);
   }else{
-    appendLine(currentLine);
+    appendLine(line);
     currentLine=''; charIndex=0; lineIndex++;
-    setTimeout(typeTick,350);
+    setTimeout(typeTick,200);
   }
 }
 
@@ -457,19 +528,40 @@ function renderTerminal(html){
   }
 }
 
-function appendLine(text){
+function appendLine(line){
   const last=terminalEl.lastElementChild;
-  if(last&&last.classList.contains('typing')){
-    last.classList.remove('typing');
-    last.innerHTML=text;
+  const div=last&&last.classList.contains('typing')?last:document.createElement('div');
+  div.className='terminal-line';
+  
+  if(typeof line==='string'){
+    div.textContent=line;
   }else{
-    const div=document.createElement('div');
-    div.className='terminal-line';
-    div.textContent=text;
+    let html='';
+    if(line.type==='cmd') html=`<span class="prompt">&gt;</span><span class="cmd">${line.text.substring(2)}</span>`;
+    else if(line.type==='success') html=`<span class="check">✓</span><span class="text">${line.text.substring(2)}</span>`;
+    else if(line.type==='info') html=`<span class="info">${line.text}</span>`;
+    else if(line.type==='highlight') html=`<span class="highlight">${line.text}</span>`;
+    else if(line.type==='build') html=`<span class="check">${line.text}</span>`;
+    else if(line.type==='url') html=`<span class="url">${line.text}</span>`;
+    else if(line.type==='tip') html=`<span class="tip">${line.text}</span>`;
+    else html=`<span>${line.text||line}</span>`;
+    div.innerHTML=html;
+  }
+  
+  if(!last||!last.classList.contains('typing')){
     terminalEl.appendChild(div);
+  }else{
+    last.classList.remove('typing');
   }
   terminalEl.scrollTop=terminalEl.scrollHeight;
 }
+
+// Hide loading screen
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    document.getElementById('loadingScreen').classList.add('hidden');
+  },800);
+});
 
 setTimeout(typeTick,400);
 
