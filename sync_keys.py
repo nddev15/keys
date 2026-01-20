@@ -8,41 +8,50 @@ GITHUB_RAW_URL = "https://raw.githubusercontent.com/abcxyznd/keys/main"
 SYNC_INTERVAL = 300  # 5 phút (300 giây)
 
 def sync_keys_from_github():
-    """Đồng bộ file keys từ GitHub về server"""
-    key_files = {
-        'key1d.txt': 'data/keys/key1d.txt',
-        'key7d.txt': 'data/keys/key7d.txt',
-        'key30d.txt': 'data/keys/key30d.txt',
-        'key90d.txt': 'data/keys/key90d.txt',
-        'key_solved.txt': 'data/keys/key_solved.txt'
+    """Đồng bộ file keys và prices từ GitHub về server"""
+    # Files cần sync
+    files_to_sync = {
+        # Keys
+        'data/keys/key1d.txt': 'data/keys/key1d.txt',
+        'data/keys/key7d.txt': 'data/keys/key7d.txt',
+        'data/keys/key30d.txt': 'data/keys/key30d.txt',
+        'data/keys/key90d.txt': 'data/keys/key90d.txt',
+        'data/keys/key_solved.txt': 'data/keys/key_solved.txt',
+        # Prices
+        'data/prices/prices.json': 'data/prices/prices.json',
+        # Coupons
+        'data/coupon/coupons.json': 'data/coupon/coupons.json',
     }
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"🔄 [{timestamp}] Đang đồng bộ keys từ GitHub...")
+    print(f"🔄 [{timestamp}] Đang đồng bộ data từ GitHub...")
     
     success_count = 0
-    for filename, filepath in key_files.items():
+    for github_path, local_path in files_to_sync.items():
         try:
-            url = f"{GITHUB_RAW_URL}/data/keys/{filename}"
+            url = f"{GITHUB_RAW_URL}/{github_path}"
             response = requests.get(url, timeout=10)
             
             if response.status_code == 200:
                 # Tạo thư mục nếu chưa có
-                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                os.makedirs(os.path.dirname(local_path), exist_ok=True)
                 
                 # Ghi file
-                with open(filepath, 'w', encoding='utf-8') as f:
+                with open(local_path, 'w', encoding='utf-8') as f:
                     f.write(response.text)
                 
+                filename = os.path.basename(local_path)
                 print(f"✅ Đã sync: {filename}")
                 success_count += 1
             else:
+                filename = os.path.basename(local_path)
                 print(f"⚠️  Không tìm thấy: {filename} (HTTP {response.status_code})")
                 
         except Exception as e:
+            filename = os.path.basename(local_path)
             print(f"❌ Lỗi sync {filename}: {e}")
     
-    print(f"✅ Hoàn tất đồng bộ keys ({success_count}/{len(key_files)} files)")
+    print(f"✅ Hoàn tất đồng bộ ({success_count}/{len(files_to_sync)} files)")
     return success_count > 0
 
 def auto_sync_loop():
