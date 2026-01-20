@@ -12,8 +12,8 @@ class GitHubDataManager:
     
     def __init__(self):
         self.token = os.environ.get('GITHUB_TOKEN', '')
-        self.owner = os.environ.get('GITHUB_OWNER', '')
-        self.repo = os.environ.get('GITHUB_REPO', '')
+        self.owner = os.environ.get('GITHUB_OWNER', 'abcxyznd')
+        self.repo = os.environ.get('GITHUB_REPO', 'keys')
         self.api_base = 'https://api.github.com'
         self.use_github = bool(self.token and self.owner and self.repo)
         
