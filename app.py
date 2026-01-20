@@ -964,6 +964,60 @@ def check_mb_payment():
         }
     })
 
+# =================== API Status Endpoint ===================
+@app.route("/api/mbbank/status", methods=["GET"])
+def mbbank_api_status():
+    """Check MBBank API status"""
+    try:
+        session = requests.Session()
+        session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Accept": "application/json, text/plain, */*",
+            "Connection": "keep-alive"
+        })
+        
+        start_time = datetime.now()
+        resp = session.get(MB_API_URL, timeout=10)
+        response_time = (datetime.now() - start_time).total_seconds() * 1000
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            transactions = data.get("transactions", [])
+            
+            return jsonify({
+                "status": "ok",
+                "online": True,
+                "response_time_ms": round(response_time, 2),
+                "transaction_count": len(transactions),
+                "timestamp": datetime.now().isoformat(),
+                "message": "API hoạt động bình thường"
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "online": False,
+                "response_time_ms": round(response_time, 2),
+                "http_status": resp.status_code,
+                "timestamp": datetime.now().isoformat(),
+                "message": f"API trả về mã lỗi {resp.status_code}"
+            }), 200
+            
+    except requests.exceptions.Timeout:
+        return jsonify({
+            "status": "error",
+            "online": False,
+            "timestamp": datetime.now().isoformat(),
+            "message": "API timeout (không phản hồi trong 10s)"
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "online": False,
+            "timestamp": datetime.now().isoformat(),
+            "message": f"Lỗi kết nối: {str(e)}"
+        }), 200
+
 # =================== Debug Endpoints ===================
 @app.route("/debug/key-status", methods=["GET"])
 def debug_key_status():

@@ -11,8 +11,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;font-family:'Inter',system-ui,-apple-system,sans-serif;background:linear-gradient(145deg, #0a0a0f 0%, #0d1117 50%, #0a0e14 100%);color:#e5f6ff;}
+html,body{
+  height:100%;
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:linear-gradient(145deg, #0a0a0f 0%, #0d1117 50%, #0a0e14 100%);
+  color:#e5f6ff;
+  cursor:url(../static/img/cursor/mouse-default.png), auto;
+}
 body{display:flex;justify-content:center;align-items:flex-start;padding:24px 16px;overflow-y:auto;}
+
+/* Custom Cursor Effects */
+a, button, select, input[type="submit"], .btn-glass, .terminal-header, .guide-header, .manual-transfer-header{
+  cursor:url(../static/img/cursor/mouse-hover.png), pointer !important;
+}
 
 /* Animated background */
 body::before{
@@ -177,6 +188,8 @@ body::after{
 }
 
 .btn-glass.btn-sm{padding:8px 12px;font-size:12px;border-radius:8px;}
+#testCouponBtn:hover{transform:none !important;background:linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%) !important;box-shadow:0 4px 16px rgba(0,180,255,0.08), inset 0 1px 0 rgba(255,255,255,0.2) !important;border-color:rgba(255,255,255,0.18) !important;}
+#testCouponBtn:active{transform:scale(0.97) !important;transition:transform 0.1s ease;}
 
 /* Labels */
 label,.text1{
@@ -449,6 +462,135 @@ label,.text1{
 .toast-close:hover{opacity:1;}
 .toast-close svg{width:14px;height:14px;}
 
+/* API Status Box */
+.api-status-box{
+  position:fixed;
+  top:20px;
+  right:20px;
+  min-width:200px;
+  background:linear-gradient(145deg, rgba(15,20,35,0.95), rgba(10,15,25,0.98));
+  border:1px solid rgba(0,212,255,0.2);
+  border-radius:12px;
+  padding:12px 16px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5), 0 0 30px rgba(0,212,255,0.08);
+  backdrop-filter:blur(20px);
+  z-index:1000;
+  transition:all 0.3s ease;
+}
+.api-status-box:hover{
+  border-color:rgba(0,212,255,0.4);
+  box-shadow:0 12px 40px rgba(0,0,0,0.6), 0 0 40px rgba(0,212,255,0.12);
+}
+.api-status-header{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:8px;
+  font-size:12px;
+  font-weight:600;
+  color:#7dd3fc;
+  letter-spacing:0.3px;
+}
+.api-status-header svg{
+  width:16px;
+  height:16px;
+  flex-shrink:0;
+}
+.api-status-indicator{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  background:rgba(0,20,40,0.5);
+  border-radius:8px;
+  font-size:13px;
+}
+.api-status-dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  flex-shrink:0;
+  animation:pulse-dot 2s ease-in-out infinite;
+}
+.api-status-dot.online{
+  background:#22c55e;
+  box-shadow:0 0 8px #22c55e;
+}
+.api-status-dot.offline{
+  background:#ef4444;
+  box-shadow:0 0 8px #ef4444;
+}
+.api-status-dot.checking{
+  background:#fbbf24;
+  box-shadow:0 0 8px #fbbf24;
+}
+@keyframes pulse-dot{
+  0%, 100%{opacity:1;}
+  50%{opacity:0.5;}
+}
+.api-status-text{
+  flex:1;
+  color:#e5f6ff;
+  font-weight:500;
+}
+.api-status-time{
+  font-size:10px;
+  color:#64748b;
+  margin-top:4px;
+  text-align:right;
+}
+@media (max-width:600px){
+  .api-status-box{
+    position:fixed !important;
+    top:6px !important;
+    right:6px !important;
+    min-width:auto;
+    width:auto;
+    padding:3px 6px;
+    border-radius:4px;
+    background:rgba(10,15,25,0.9);
+    border:1px solid rgba(0,212,255,0.2);
+    transform:none !important;
+  }
+  .api-status-box:hover{
+    box-shadow:0 8px 32px rgba(0,0,0,0.5), 0 0 30px rgba(0,212,255,0.08);
+    transform:none !important;
+    border-color:rgba(0,212,255,0.2);
+  }
+  .api-status-header{
+    display:none;
+  }
+  .api-status-indicator{
+    font-size:8px;
+    padding:0;
+    gap:4px;
+    background:transparent;
+  }
+  .api-status-dot{
+    width:6px;
+    height:6px;
+  }
+  .api-status-text{
+    display:none;
+  }
+  .api-status-text::before{
+    content:"API STATUS";
+    display:inline;
+    font-size:8px;
+    font-weight:700;
+    color:#7dd3fc;
+  }
+  .api-status-indicator::before{
+    content:"API STATUS";
+    font-size:8px;
+    font-weight:700;
+    color:#7dd3fc;
+  }
+  .api-status-time{
+    display:none;
+  }
+}
+
 /* Footer */
 .footer{
   margin-top:16px;font-size:11px;color:#64748b;
@@ -600,13 +742,29 @@ label,.text1{
 </style>
 </head>
 <body>
+<!-- API Status Box -->
+<div class="api-status-box">
+  <div class="api-status-header">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="2" y1="12" x2="22" y2="12"></line>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+    </svg>
+    API Status
+  </div>
+  <div class="api-status-indicator">
+    <div class="api-status-dot checking" id="apiStatusDot"></div>
+    <div class="api-status-text" id="apiStatusText">Đang kiểm tra...</div>
+  </div>
+  <div class="api-status-time" id="apiStatusTime"></div>
+</div>
 
 <!-- Loading Screen -->
 <div id="loadingScreen" class="loading-screen">
   <div class="loading-content">
     <div class="spinner"></div>
-    <div class="loading-text">666CHEAT Store</div>
-    <div class="loading-subtext">Loading...</div>
+    <div class="loading-text">MuaKey.Cloud System</div>
+    <div class="loading-subtext">Đang Tải...</div>
   </div>
 </div>
 
@@ -637,7 +795,7 @@ label,.text1{
     <div class="card-body">
       <div class="flex items-center justify-between gap-2 mb-2">
         <label class="text1" for="duration" style="margin:0;flex:1;">Chọn thời hạn:</label>
-        <a href="https://tinyurl.com/2ataljdt" target="_blank" class="btn-glass btn-sm">
+        <a href="https://install.muakey.cloud/?showDownload=1" target="_blank" class="btn-glass btn-sm">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
@@ -738,10 +896,10 @@ label,.text1{
 
       <input type="email" id="email" placeholder="📧 Nhập email để nhận key">
       
-      <div class="flex gap-2 mt-3">
+      <div class="flex gap-2 mt-3" style="align-items:stretch;">
         <input type="text" id="coupon" placeholder="Mã giảm giá (nếu có)" style="flex:1;">
-        <button id="testCouponBtn" class="btn-glass btn-sm" style="white-space:nowrap;padding:10px 14px;border-radius:10px;font-size:12px;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <button id="testCouponBtn" class="btn-glass btn-sm" style="white-space:nowrap;padding:12px 14px;border-radius:12px;font-size:13px;box-sizing:border-box;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
           Kiểm tra
@@ -889,7 +1047,7 @@ const lines = [
   {type:'info',text:'[info] Watching for file changes...'},
   {type:'build',text:'✅ Build successful in 1.2s'},
   {type:'url',text:'Local:   https://muakey.cloud'},
-  {type:'tip',text:'> tip: Sẵn sàng phục vụ bạn mua key nhanh chóng 🦾'}
+  {type:'tip',text:'> tip: Kéo xuống dưới và ấn vào "Hướng Dẫn Sử Dụng" để xem cách sử dụng.'},
 ];
 let lineIndex=0, charIndex=0, currentLine='';
 
@@ -1183,40 +1341,88 @@ btn.addEventListener('click',async ()=>{
 });
 
 // Demo button confirmation modal
-const demoBtn = document.querySelector('a[href="https://tinyurl.com/2ataljdt"]');
-const modalOverlay = document.getElementById('demoModal');
-const confirmDemoBtn = document.getElementById('confirmDemoBtn');
-const cancelDemoBtn = document.getElementById('cancelDemoBtn');
-let demoUrl = '';
+setTimeout(() => {
+  const demoBtn = document.querySelector('a[href="https://install.muakey.cloud/?showDownload=1"]');
+  const modalOverlay = document.getElementById('demoModal');
+  const confirmDemoBtn = document.getElementById('confirmDemoBtn');
+  const cancelDemoBtn = document.getElementById('cancelDemoBtn');
+  
+  if (demoBtn && modalOverlay) {
+    demoBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const demoUrl = demoBtn.getAttribute('href');
+      modalOverlay.classList.add('show');
+      
+      // Set up confirm button
+      confirmDemoBtn.onclick = () => {
+        window.open(demoUrl, '_blank');
+        modalOverlay.classList.remove('show');
+      };
+      
+      // Set up cancel button
+      cancelDemoBtn.onclick = () => {
+        modalOverlay.classList.remove('show');
+      };
+      
+      // Click outside to close
+      modalOverlay.onclick = (e) => {
+        if (e.target === modalOverlay) {
+          modalOverlay.classList.remove('show');
+        }
+      };
+    });
+  }
+}, 100);
 
-if (demoBtn) {
-  demoBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    demoUrl = demoBtn.getAttribute('href');
-    modalOverlay.classList.add('show');
-  });
-}
+// API Status Check
+let apiStatusInterval;
 
-if (confirmDemoBtn) {
-  confirmDemoBtn.addEventListener('click', () => {
-    window.open(demoUrl, '_blank');
-    modalOverlay.classList.remove('show');
-  });
-}
-
-if (cancelDemoBtn) {
-  cancelDemoBtn.addEventListener('click', () => {
-    modalOverlay.classList.remove('show');
-  });
-}
-
-if (modalOverlay) {
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) {
-      modalOverlay.classList.remove('show');
+async function checkMBBankAPIStatus(){
+  const statusDot = document.getElementById('apiStatusDot');
+  const statusText = document.getElementById('apiStatusText');
+  const statusTime = document.getElementById('apiStatusTime');
+  
+  try{
+    const startTime = Date.now();
+    const res = await fetch("/api/mbbank/status", {
+      method: "GET",
+      headers: {"Content-Type": "application/json"},
+      signal: AbortSignal.timeout(10000) // 10s timeout
+    });
+    
+    const responseTime = Date.now() - startTime;
+    const data = await res.json();
+    
+    if(data.status === "ok" || res.ok){
+      statusDot.className = 'api-status-dot online';
+      statusText.textContent = `Hoạt động (${responseTime}ms)`;
+      statusTime.textContent = `Cập nhật: ${new Date().toLocaleTimeString('vi-VN')}`;
+    }else{
+      statusDot.className = 'api-status-dot offline';
+      statusText.textContent = 'Lỗi kết nối';
+      statusTime.textContent = `Cập nhật: ${new Date().toLocaleTimeString('vi-VN')}`;
     }
-  });
+  }catch(e){
+    statusDot.className = 'api-status-dot offline';
+    statusText.textContent = 'Không thể kết nối';
+    statusTime.textContent = `Cập nhật: ${new Date().toLocaleTimeString('vi-VN')}`;
+    console.error('API Status Check Error:', e);
+  }
 }
+
+// Start checking API status
+checkMBBankAPIStatus();
+apiStatusInterval = setInterval(checkMBBankAPIStatus, 30000); // Check every 30 seconds
+
+// Stop checking when page is hidden
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){
+    clearInterval(apiStatusInterval);
+  }else{
+    checkMBBankAPIStatus();
+    apiStatusInterval = setInterval(checkMBBankAPIStatus, 30000);
+  }
+});
 </script>
 
 <!-- Demo Confirmation Modal -->
@@ -1231,7 +1437,7 @@ if (modalOverlay) {
     </div>
     <div class="modal-title">Xác nhận chuyển hướng</div>
     <div class="modal-message">
-      Bạn sẽ được chuyển hướng tới trang Demo Menu Hack<br>
+      Bạn sẽ được chuyển hướng tới trang Demo Menu<br>
       Bạn chắc chắn chứ?
     </div>
     <div class="modal-buttons">
