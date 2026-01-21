@@ -668,10 +668,10 @@ def start(message):
         types.InlineKeyboardButton("🔗 Rút gọn Link", callback_data="category_links")
     )
     markup.add(
-        types.InlineKeyboardButton("� Quản lý Admin", callback_data="category_admin")
+        types.InlineKeyboardButton("👥 Quản lý Admin", callback_data="category_admin")
     )
     markup.add(
-        types.InlineKeyboardButton("�🔄 Đồng bộ dữ liệu", callback_data="menu_syncdata")
+        types.InlineKeyboardButton("🔄 Đồng bộ dữ liệu", callback_data="menu_syncdata")
     )
     bot.send_message(message.chat.id, 
                     "👋 <b>Chào mừng đến với Bot Quản Lý!</b>\n\n"
@@ -794,6 +794,9 @@ def handle_back_to_main(call):
     markup.add(
         types.InlineKeyboardButton("💰 Quản lý Giá", callback_data="category_prices"),
         types.InlineKeyboardButton("🔗 Rút gọn Link", callback_data="category_links")
+    )
+    markup.add(
+        types.InlineKeyboardButton("👥 Quản lý Admin", callback_data="category_admin")
     )
     markup.add(
         types.InlineKeyboardButton("🔄 Đồng bộ dữ liệu", callback_data="menu_syncdata")
@@ -1983,13 +1986,20 @@ def sync_data_by_type(data_type):
         "links": {
             'data/links/download.json': 'data/links/download.json',
         },
+        "shortenurl": {
+            'data/shortenurl/isgd.json': 'data/shortenurl/isgd.json',
+            'data/shortenurl/tinyurl.json': 'data/shortenurl/tinyurl.json',
+        },
+        "admin": {
+            'data/admin/admin.json': 'data/admin/admin.json',
+        },
         "all": {}
     }
     
     # If all, merge all data types
     if data_type == "all":
         files_to_sync = {}
-        for dtype in ["keys", "coupon", "prices", "links", "shortenurl"]:
+        for dtype in ["keys", "coupon", "prices", "links", "shortenurl", "admin"]:
             files_to_sync.update(data_files[dtype])
     else:
         files_to_sync = data_files.get(data_type, {})
@@ -2035,6 +2045,7 @@ def handle_sync_callback(call):
         "sync_prices": "prices",
         "sync_links": "links",
         "sync_shortenurl": "shortenurl",
+        "sync_admin": "admin",
         "sync_all": "all"
     }
     
@@ -2076,6 +2087,13 @@ def handle_sync_callback(call):
             if data_type in ["prices", "all"]:
                 extra_info += "\n\n💰 <b>Prices:</b> Đã cập nhật bảng giá"
             
+            if data_type in ["shortenurl", "all"]:
+                extra_info += "\n\n📎 <b>Shorten URL:</b> Đã cập nhật"
+            
+            if data_type in ["admin", "all"]:
+                admins = load_admins()
+                extra_info += f"\n\n👥 <b>Admin:</b> {len(admins)} admin"
+            
             msg = f"✅ <b>Đồng bộ hoàn tất!</b>\n\n{message_text}{extra_info}"
             bot.edit_message_text(msg, chat_id, call.message.id, parse_mode="HTML")
         else:
@@ -2107,7 +2125,8 @@ def sync_data_command(message):
         types.InlineKeyboardButton("🔗 Links", callback_data="sync_links")
     )
     markup.add(
-        types.InlineKeyboardButton("📎 Shorten URL", callback_data="sync_shortenurl")
+        types.InlineKeyboardButton("📎 Shorten URL", callback_data="sync_shortenurl"),
+        types.InlineKeyboardButton("👥 Admin", callback_data="sync_admin")
     )
     markup.add(
         types.InlineKeyboardButton("📦 Tất cả", callback_data="sync_all")
