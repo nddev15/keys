@@ -765,8 +765,8 @@ def start(message):
         types.InlineKeyboardButton("🤖 Quản lý Bot", callback_data="category_bot")
     )
     markup.add(
-        types.InlineKeyboardButton("� Dashboard", callback_data="show_dashboard"),
-        types.InlineKeyboardButton("�🔄 Đồng bộ dữ liệu", callback_data="menu_syncdata")
+        types.InlineKeyboardButton("📊 Dashboard", callback_data="show_dashboard"),
+        types.InlineKeyboardButton("🔄 Đồng bộ dữ liệu", callback_data="menu_syncdata")
     )
     bot.send_message(message.chat.id, 
                     "👋 <b>Chào mừng đến với Bot Quản Lý Thuộc Muakey.cloud!</b>\n\n"
@@ -2621,11 +2621,11 @@ def show_dashboard(call):
         
         # Web Routes
         dashboard_text += "🌐 <b>WEB ROUTES:</b>\n"
-        dashboard_text += "• <code>/</code> - Trang chủ\n"
-        dashboard_text += "• <code>/check_coupon</code> - Kiểm tra coupon\n"
-        dashboard_text += "• <code>/check_mb_payment</code> - Xử lý thanh toán\n"
-        dashboard_text += "• <code>/admin/login</code> - Admin login\n"
-        dashboard_text += "• <code>/admin/dashboard</code> - Admin panel\n\n"
+        dashboard_text += "• https://muakey.cloud/ - Trang chủ\n"
+        dashboard_text += "• https://muakey.cloud/check_coupon - Kiểm tra coupon\n"
+        dashboard_text += "• https://muakey.cloud/check_mb_payment - Xử lý thanh toán\n"
+        dashboard_text += "• https://muakey.cloud/admin/login - Admin login\n"
+        dashboard_text += "• https://muakey.cloud/admin/dashboard - Admin panel\n\n"
         
         # API Routes
         dashboard_text += "🔗 <b>API ENDPOINTS:</b>\n"
