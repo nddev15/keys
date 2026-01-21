@@ -598,37 +598,134 @@ def save_new_coupon(message, chat_id):
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    """Start command"""
+    """Start command - Show main menu categories"""
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("🔑 Xem Key", callback_data="menu_xemkey"),
-        types.InlineKeyboardButton("➕ Thêm Key", callback_data="menu_themkey")
+        types.InlineKeyboardButton("🔑 Quản lý Key", callback_data="category_keys"),
+        types.InlineKeyboardButton("🎟️ Quản lý Coupon", callback_data="category_coupon")
     )
     markup.add(
-        types.InlineKeyboardButton("❌ Xóa Key", callback_data="menu_xoakey"),
-        types.InlineKeyboardButton("🔄 Đồng bộ", callback_data="menu_syncdata")
+        types.InlineKeyboardButton("💰 Quản lý Giá", callback_data="category_prices"),
+        types.InlineKeyboardButton("🔗 Rút gọn Link", callback_data="category_links")
     )
     markup.add(
-        types.InlineKeyboardButton("🎟️ Thêm Coupon", callback_data="menu_themcoupon"),
-        types.InlineKeyboardButton("🗑️ Xóa Coupon", callback_data="menu_xoacoupon")
-    )
-    markup.add(
-        types.InlineKeyboardButton("📋 Coupon hiện có", callback_data="menu_couponhienco"),
-        types.InlineKeyboardButton("💰 Xem giá", callback_data="menu_xemgia")
-    )
-    markup.add(
-        types.InlineKeyboardButton("✏️ Chỉnh giá", callback_data="menu_chinhgia"),
-        types.InlineKeyboardButton("🔗 Rút gọn link", callback_data="menu_rutgonlink")
-    )
-    markup.add(
-        types.InlineKeyboardButton("📎 Xem link rút gọn", callback_data="menu_showshortenurl")
+        types.InlineKeyboardButton("🔄 Đồng bộ dữ liệu", callback_data="menu_syncdata")
     )
     bot.send_message(message.chat.id, 
                     "👋 <b>Chào mừng đến với Bot Quản Lý!</b>\n\n"
-                    "Chọn chức năng bạn muốn sử dụng:",
+                    "📋 Chọn danh mục bạn muốn quản lý:",
                     reply_markup=markup, parse_mode="HTML")
 
 # =================== CALLBACK HANDLERS ===================
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("category_"))
+def handle_category_callback(call):
+    """Handle category menu callbacks"""
+    chat_id = call.message.chat.id
+    
+    if call.data == "category_keys":
+        # Show Key Management submenu
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("👁️ Xem Key", callback_data="menu_xemkey"),
+            types.InlineKeyboardButton("➕ Thêm Key", callback_data="menu_themkey")
+        )
+        markup.add(
+            types.InlineKeyboardButton("❌ Xóa Key", callback_data="menu_xoakey")
+        )
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="back_to_main"))
+        
+        bot.edit_message_text(
+            "🔑 <b>Quản lý Key</b>\n\nChọn chức năng:",
+            chat_id,
+            call.message.id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    
+    elif call.data == "category_coupon":
+        # Show Coupon Management submenu
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("📋 Xem Coupon", callback_data="menu_couponhienco"),
+            types.InlineKeyboardButton("➕ Thêm Coupon", callback_data="menu_themcoupon")
+        )
+        markup.add(
+            types.InlineKeyboardButton("🗑️ Xóa Coupon", callback_data="menu_xoacoupon")
+        )
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="back_to_main"))
+        
+        bot.edit_message_text(
+            "🎟️ <b>Quản lý Coupon</b>\n\nChọn chức năng:",
+            chat_id,
+            call.message.id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    
+    elif call.data == "category_prices":
+        # Show Prices Management submenu
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("👁️ Xem Giá", callback_data="menu_xemgia"),
+            types.InlineKeyboardButton("✏️ Chỉnh Giá", callback_data="menu_chinhgia")
+        )
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="back_to_main"))
+        
+        bot.edit_message_text(
+            "💰 <b>Quản lý Giá</b>\n\nChọn chức năng:",
+            chat_id,
+            call.message.id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    
+    elif call.data == "category_links":
+        # Show Link Shortener submenu
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("🔗 Rút gọn Link", callback_data="menu_rutgonlink"),
+            types.InlineKeyboardButton("📎 Xem Link đã rút gọn", callback_data="menu_showshortenurl")
+        )
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="back_to_main"))
+        
+        bot.edit_message_text(
+            "🔗 <b>Quản lý Link</b>\n\nChọn chức năng:",
+            chat_id,
+            call.message.id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    
+    bot.answer_callback_query(call.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "back_to_main")
+def handle_back_to_main(call):
+    """Go back to main menu"""
+    chat_id = call.message.chat.id
+    
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("🔑 Quản lý Key", callback_data="category_keys"),
+        types.InlineKeyboardButton("🎟️ Quản lý Coupon", callback_data="category_coupon")
+    )
+    markup.add(
+        types.InlineKeyboardButton("💰 Quản lý Giá", callback_data="category_prices"),
+        types.InlineKeyboardButton("🔗 Rút gọn Link", callback_data="category_links")
+    )
+    markup.add(
+        types.InlineKeyboardButton("🔄 Đồng bộ dữ liệu", callback_data="menu_syncdata")
+    )
+    
+    bot.edit_message_text(
+        "👋 <b>Chào mừng đến với Bot Quản Lý!</b>\n\n"
+        "📋 Chọn danh mục bạn muốn quản lý:",
+        chat_id,
+        call.message.id,
+        reply_markup=markup,
+        parse_mode="HTML"
+    )
+    bot.answer_callback_query(call.id)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("menu_"))
 def handle_menu_callback(call):
@@ -679,7 +776,7 @@ def handle_viewkey_callback(call):
         markup = types.InlineKeyboardMarkup()
         if total_pages > 1:
             markup.add(types.InlineKeyboardButton("➡️ Trang kế tiếp", callback_data=f"keypage_{period_label}_1"))
-        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="menu_xemkey"))
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="category_keys"))
         
         user_states[chat_id] = {"step": "viewing_keys", "period_label": period_label, "page": 0, "total_pages": total_pages}
         bot.edit_message_text(msg_text, chat_id, call.message.id, reply_markup=markup, parse_mode="HTML")
@@ -705,7 +802,7 @@ def handle_keypage_callback(call):
     
     if nav_buttons:
         markup.row(*nav_buttons)
-    markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="menu_xemkey"))
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="category_keys"))
     
     user_states[chat_id].update({"page": page, "total_pages": total_pages})
     bot.edit_message_text(msg_text, chat_id, call.message.id, reply_markup=markup, parse_mode="HTML")
@@ -737,6 +834,7 @@ def xem_key(message):
         types.InlineKeyboardButton(f"1 Tháng ({count_30d})", callback_data="viewkey_30d"),
         types.InlineKeyboardButton(f"1 Mùa ({count_90d})", callback_data="viewkey_90d")
     )
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_keys"))
     
     bot.send_message(chat_id, "🔑 <b>Chọn loại key:</b>", reply_markup=markup, parse_mode="HTML")
     user_states[chat_id] = {"step": "waiting_view_key_type"}
@@ -793,6 +891,7 @@ def them_key(message):
         types.InlineKeyboardButton("1 Tháng (30d)", callback_data="addkey_30d"),
         types.InlineKeyboardButton("1 Mùa (90d)", callback_data="addkey_90d")
     )
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_keys"))
     
     bot.send_message(chat_id, "🔐 Chọn loại key:", reply_markup=markup)
 
@@ -894,7 +993,7 @@ def handle_delkey_period_callback(call):
         display_keys = lines[:10]
         for i, key in enumerate(display_keys):
             markup.add(types.InlineKeyboardButton(key, callback_data=f"confirmdelkey_{i}"))
-        markup.add(types.InlineKeyboardButton("❌ Hủy", callback_data="menu_xoakey"))
+        markup.add(types.InlineKeyboardButton("❌ Hủy", callback_data="category_keys"))
         
         msg = f"📋 Chọn key để xóa:\n\n"
         msg += f"Tổng số key: {len(lines)}\n"
@@ -980,6 +1079,7 @@ def xoa_key(message):
         types.InlineKeyboardButton("1 Tháng (30d)", callback_data="delkey_30d"),
         types.InlineKeyboardButton("1 Mùa (90d)", callback_data="delkey_90d")
     )
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_keys"))
     
     bot.send_message(chat_id, "🔐 Chọn loại key để xóa:", reply_markup=markup)
 
@@ -999,7 +1099,9 @@ def coupon_hien_co(message):
     coupons = load_coupons()
     
     if not coupons:
-        bot.send_message(chat_id, "❌ Không có mã giảm giá nào!")
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_coupon"))
+        bot.send_message(chat_id, "❌ Không có mã giảm giá nào!", reply_markup=markup)
         return
     
     msg = "🎟️ <b>Danh sách mã giảm giá</b>\n\n"
@@ -1015,7 +1117,9 @@ def coupon_hien_co(message):
         msg += f"  • Hết hạn: {expires}\n"
         msg += f"  • Áp dụng: {types}\n\n"
     
-    bot.send_message(chat_id, msg, parse_mode="HTML")
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_coupon"))
+    bot.send_message(chat_id, msg, reply_markup=markup, parse_mode="HTML")
 
 @bot.message_handler(commands=['themcoupon'])
 def them_coupon(message):
@@ -1028,7 +1132,10 @@ def them_coupon(message):
     
     user_states[chat_id] = {"step": "waiting_coupon_code"}
     
-    bot.send_message(chat_id, "🎟️ Nhập mã giảm giá (VD: COUPON001):")
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("❌ Hủy", callback_data="category_coupon"))
+    
+    bot.send_message(chat_id, "🎟️ Nhập mã giảm giá (VD: COUPON001):", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: user_states.get(message.chat.id, {}).get("step") == "waiting_coupon_code")
 def process_coupon_code(message):
@@ -1251,7 +1358,9 @@ def xoa_coupon(message):
     coupons = load_coupons()
     
     if not coupons:
-        bot.send_message(chat_id, "❌ Không có mã giảm giá để xóa!")
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_coupon"))
+        bot.send_message(chat_id, "❌ Không có mã giảm giá để xóa!", reply_markup=markup)
         return
     
     user_states[chat_id] = {"step": "waiting_coupon_delete"}
@@ -1264,7 +1373,11 @@ def xoa_coupon(message):
         msg += f"\n... và {len(coupons) - 10} mã khác"
     
     msg += "\n\nNhập mã cần xóa:"
-    bot.send_message(chat_id, msg)
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("❌ Hủy", callback_data="category_coupon"))
+    
+    bot.send_message(chat_id, msg, reply_markup=markup)
 
 @bot.message_handler(func=lambda message: user_states.get(message.chat.id, {}).get("step") == "waiting_coupon_delete")
 def process_coupon_delete(message):
@@ -1349,6 +1462,7 @@ def rut_gon_link(message):
         types.InlineKeyboardButton("🔗 TinyURL", callback_data="shorten_tinyurl"),
         types.InlineKeyboardButton("🔗 is.gd", callback_data="shorten_isgd")
     )
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_links"))
     bot.send_message(chat_id, "🔗 <b>Chọn dịch vụ rút gọn link:</b>", reply_markup=markup, parse_mode="HTML")
     user_states[chat_id] = {"step": "waiting_service_choice"}
 
@@ -1574,6 +1688,7 @@ def show_shortened_urls(message):
         types.InlineKeyboardButton("📌 TinyURL", callback_data="showurl_tinyurl"),
         types.InlineKeyboardButton("📌 is.gd", callback_data="showurl_isgd")
     )
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_links"))
     
     bot.send_message(chat_id, "🔗 <b>Chọn dịch vụ để xem link rút gọn:</b>", reply_markup=markup, parse_mode="HTML")
 
@@ -1633,7 +1748,10 @@ def xem_gia(message):
         currency = data.get("currency", "VND")
         msg += f"<b>{label} ({period_code}):</b> {amount:,} {currency}\n"
     
-    bot.send_message(chat_id, msg, parse_mode="HTML")
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_prices"))
+    
+    bot.send_message(chat_id, msg, reply_markup=markup, parse_mode="HTML")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("editprice_"))
 def handle_edit_price_callback(call):
@@ -1695,6 +1813,7 @@ def chinh_gia(message):
         types.InlineKeyboardButton("1 Tháng (30d)", callback_data="editprice_30d"),
         types.InlineKeyboardButton("1 Mùa (90d)", callback_data="editprice_90d")
     )
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_prices"))
     
     bot.send_message(chat_id, "💰 Chọn loại key để chỉnh giá:", reply_markup=markup)
 
