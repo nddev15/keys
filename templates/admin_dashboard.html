@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muakey.cloud - Admin Dashboard</title>
+    <link rel="icon" href="https://files.catbox.moe/zrq6pf.png" type="image/x-icon" />
+    <link rel="shortcut icon" href="https://files.catbox.moe/zrq6pf.png" type="image/x-icon" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(120, 219, 226, 0.25) 0%, transparent 50%),
+                radial-gradient(circle at 70% 70%, rgba(255, 206, 84, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 10% 90%, rgba(138, 43, 226, 0.3) 0%, transparent 60%),
+                radial-gradient(circle at 90% 10%, rgba(255, 255, 255, 0.1) 0%, transparent 30%),
+                linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 30%, #16213e 70%, #0f3460 100%);
+            background-size: 400px 400px, 500px 500px, 450px 450px, 
+                            350px 350px, 600px 600px, 300px 300px, 100% 100%;
+            background-position: 20% 50%, 80% 20%, 40% 80%, 
+                                70% 70%, 10% 90%, 90% 10%, 0 0;
+            color: #000;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        .header {
+            position: relative;
+            display: flex;
+            font-weight: 600;
+            overflow: hidden;
+            color: black;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), 0 0 50px rgba(255, 255, 255, 0.15);
+            padding: 1rem;
+            border-radius: 1.5rem;
+            margin: 1.5rem;
+        }
+
+        .liquidGlass-effect {
+            position: absolute;
+            z-index: 0;
+            inset: 0;
+            filter: url(#glass-distortion);
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .liquidGlass-tint {
+            z-index: 1;
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .liquidGlass-shine {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            overflow: hidden;
+            box-shadow: inset 2px 2px 1px 0 rgba(255, 255, 255, 0.9),
+                        inset -1px -1px 1px 1px rgba(255, 255, 255, 0.9);
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 3;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #000;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(0, 0, 0, 0.7);
+            font-size: 13px;
+        }
+
+        .btn-logout {
+            background: rgba(255, 255, 255, 0.35);
+            color: #000;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5),
+                        0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-logout:hover {
+            background: rgba(255, 255, 255, 0.45);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+            padding: 1.5rem;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 
+                        0 0 40px rgba(255, 255, 255, 0.1),
+                        0 1px 0 rgba(255, 255, 255, 0.4) inset;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            border-radius: 18px;
+            filter: url(#glass-distortion);
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 18px;
+            z-index: 2;
+            box-shadow: inset 3px 3px 3px 0 rgba(255, 255, 255, 0.9),
+                        inset -1px -1px 2px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        .stat-card > * {
+            position: relative;
+            z-index: 3;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 
+                        0 0 60px rgba(255, 255, 255, 0.15),
+                        0 1px 0 rgba(255, 255, 255, 0.5) inset;
+        }
+
+        .stat-card h3 {
+            color: rgba(0, 0, 0, 0.6);
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #000;
+            position: relative;
+            z-index: 3;
+        }
+
+        .section {
+            position: relative;
+            overflow: hidden;
+            border-radius: 18px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 
+                        0 0 40px rgba(255, 255, 255, 0.1),
+                        0 1px 0 rgba(255, 255, 255, 0.3) inset;
+            z-index: 1;
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            border-radius: 18px;
+            filter: url(#glass-distortion);
+        }
+
+        .section::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 18px;
+            z-index: 2;
+            box-shadow: inset 3px 3px 3px 0 rgba(255, 255, 255, 0.9),
+                        inset -1px -1px 2px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        .section > * {
+            position: relative;
+            z-index: 3;
+        }
+
+        .section-header {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header h2 {
+            font-size: 16px;
+            color: #000;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .tabs {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .tab {
+            position: relative;
+            overflow: hidden;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            font-size: 13px;
+            color: rgba(0, 0, 0, 0.5);
+            border-radius: 8px 8px 0 0;
+        }
+
+        .tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .tab::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 8px 8px 0 0;
+            z-index: 2;
+        }
+
+        .tab > * {
+            position: relative;
+            z-index: 3;
+        }
+
+        .tab:hover {
+            color: #000;
+        }
+
+        .tab:hover::after {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .tab.active {
+            color: #000;
+            border-bottom-color: #000;
+        }
+
+        .tab.active::after {
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: inset 2px 2px 2px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .tab-content {
+            position: relative;
+            z-index: 3;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .table-container {
+            position: relative;
+            z-index: 3;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        th {
+            background: rgba(0, 0, 0, 0.03);
+            font-weight: 600;
+            color: rgba(0, 0, 0, 0.7);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        td {
+            font-size: 13px;
+            color: rgba(0, 0, 0, 0.8);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: rgba(255, 255, 255, 0.35);
+            color: #000;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5),
+                        0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:hover {
+            background: rgba(255, 255, 255, 0.45);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6),
+                        0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-danger {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff3366;
+            border-color: rgba(255, 0, 0, 0.5);
+        }
+
+        .btn-danger:hover {
+            background: rgba(255, 0, 0, 0.3);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+            border-color: #ff3366;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 10px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(52, 211, 153, 0.2);
+            color: #047857;
+        }
+
+        .badge-warning {
+            background: rgba(251, 191, 36, 0.2);
+            color: #92400e;
+        }
+
+        .badge-info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #1e40af;
+        }
+
+        .badge-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #dc2626;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+            position: relative;
+            z-index: 3;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 13px;
+            color: #000;
+        }
+
+        .form-group input,
+        .form-group select {
+            position: relative;
+            width: 100%;
+            padding: 9px 12px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            color: #000;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            font-weight: 600;
+            overflow: hidden;
+            color: black;
+            box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            border-radius: 1.2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 1.2rem;
+            z-index: 0;
+            filter: url(#glass-distortion);
+        }
+
+        .modal-content::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.2rem;
+            z-index: 1;
+            box-shadow: inset 2px 2px 2px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .modal-body {
+            position: relative;
+            z-index: 3;
+        }
+
+        .modal-header {
+            position: relative;
+            z-index: 3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header h3 {
+            font-size: 16px;
+            color: #000;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: rgba(0, 0, 0, 0.5);
+        }
+
+        .close-btn:hover {
+            color: #000;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+
+        .btn-action {
+            background: none;
+            border: none;
+            padding: 6px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-action::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1;
+            border-radius: 4px;
+        }
+
+        .btn-action i {
+            position: relative;
+            z-index: 2;
+        }
+
+        .btn-edit {
+            color: #3b82f6;
+        }
+
+        .btn-edit:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .btn-delete {
+            color: #ef4444;
+        }
+
+        .btn-delete:hover {
+            background: rgba(239, 68, 68, 0.2);
+            transform: translateY(-1px);
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #000;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.6);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 4px;
+            font-size: 11px;
+            color: rgba(0, 0, 0, 0.5);
+        }
+
+        .btn-secondary {
+            position: relative;
+            overflow: hidden;
+            background: rgba(107, 114, 128, 0.35);
+            color: #000;
+            border: 1px solid rgba(107, 114, 128, 0.4);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(107, 114, 128, 0.45);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .alert {
+            padding: 11px 13px;
+            border-radius: 8px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .alert-success {
+            background: rgba(52, 211, 153, 0.15);
+            color: #047857;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+        }
+
+        .key-list {
+            position: relative;
+            overflow: hidden;
+            z-index: 3;
+            max-height: 300px;
+            overflow-y: auto;
+            border-radius: 8px;
+            padding: 8px;
+        }
+
+        .key-list::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            border-radius: 8px;
+        }
+
+        .key-list::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            z-index: 2;
+        }
+
+        .key-list > * {
+            position: relative;
+            z-index: 3;
+        }
+
+        .key-item {
+            padding: 8px;
+            margin-bottom: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Inter', monospace;
+            font-size: 12px;
+        }
+
+        .refresh-btn {
+            position: relative;
+            overflow: hidden;
+            background: rgba(52, 211, 153, 0.25);
+            color: #047857;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+        }
+
+        .refresh-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            border-radius: 8px;
+        }
+
+        .refresh-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 8px;
+            z-index: 2;
+            box-shadow: inset 1px 1px 1px 0 rgba(255, 255, 255, 0.5);
+        }
+
+        .refresh-btn > * {
+            position: relative;
+            z-index: 3;
+        }
+
+        .refresh-btn:hover::after {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        code {
+            background: rgba(0, 0, 0, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Inter', monospace;
+            color: #000;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .table-container {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- SVG Filters -->
+    <svg style="display: none">
+        <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+            <feTurbulence type="fractalNoise" baseFrequency="0.01 0.01" numOctaves="1" seed="5" result="turbulence"/>
+            <feComponentTransfer in="turbulence" result="mapped">
+                <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5"/>
+                <feFuncG type="gamma" amplitude="0" exponent="1" offset="0"/>
+                <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5"/>
+            </feComponentTransfer>
+            <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap"/>
+            <feSpecularLighting in="softMap" surfaceScale="5" specularConstant="1" specularExponent="100" lighting-color="white" result="specLight">
+                <fePointLight x="-200" y="-200" z="300"/>
+            </feSpecularLighting>
+            <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage"/>
+            <feDisplacementMap in="SourceGraphic" in2="softMap" scale="150" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+    </svg>
+
+    <div class="header">
+        <div class="header-content">
+            <h1><i class="fas fa-tachometer-alt"></i> Bảng Điều Khiển Muakey.cloud</h1>
+            <div class="user-info">
+                <span><i class="fas fa-user-shield"></i> {{ admin_email }}</span>
+                <a href="/admin/logout" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Đăng Xuất</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3><i class="fas fa-key"></i> Số Key Hiện Có </h3>
+                <div class="value">{{ data.stats.total_keys }}</div>
+            </div>
+            <div class="stat-card">
+                <h3><i class="fas fa-shopping-cart"></i> Tổng Đơn Hàng</h3>
+                <div class="value">{{ data.stats.total_orders }}</div>
+            </div>
+            <div class="stat-card">
+                <h3><i class="fas fa-ticket-alt"></i> Tổng Coupon</h3>
+                <div class="value">{{ data.stats.total_coupons }}</div>
+            </div>
+            <div class="stat-card">
+                <h3><i class="fas fa-server"></i> API STATUS</h3>
+                <div class="value" id="apiStatus">
+                    <span class="badge badge-info">Checking...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keys Management -->
+        <div class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-cogs"></i> Quản Lí Key</h2>
+                <button class="btn btn-primary" onclick="showAddKeyModal()"><i class="fas fa-plus"></i> THÊM KEY</button>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="keys-1d">1D ({{ data.keys['1d'].count }})</div>
+                <div class="tab" data-tab="keys-7d">7D ({{ data.keys['7d'].count }})</div>
+                <div class="tab" data-tab="keys-30d">30D ({{ data.keys['30d'].count }})</div>
+                <div class="tab" data-tab="keys-90d">90D ({{ data.keys['90d'].count }})</div>
+            </div>
+
+            {% for period, period_data in data.keys.items() %}
+            <div class="tab-content {% if period == '1d' %}active{% endif %}" id="keys-{{ period }}">
+                <div style="margin-bottom: 10px;">
+                    <button class="refresh-btn" onclick="loadKeys('{{ period }}')"><i class="fas fa-sync-alt"></i> RELOAD</button>
+                </div>
+                <div class="key-list" id="keylist-{{ period }}">
+                    {% if period_data.list %}
+                        {% for key in period_data.list[:10] %}
+                        <div class="key-item">
+                            <code>{{ key }}</code>
+                            <button class="btn btn-danger btn-sm" onclick="deleteKey('{{ period }}', '{{ key }}')">DELETE</button>
+                        </div>
+                        {% endfor %}
+                        {% if period_data.count > 10 %}
+                        <p style="text-align: center; margin-top: 10px; color: rgba(255,255,255,0.5); font-size: 11px;">
+                            ... + {{ period_data.count - 10 }} MORE KEYS
+                        </p>
+                        {% endif %}
+                    {% else %}
+                        <p style="text-align: center; color: rgba(255,255,255,0.3); font-size: 12px;">NO KEYS AVAILABLE</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Prices Management -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Chỉnh Sửa Giá</h2>
+                <button class="btn btn-primary" onclick="showEditPricesModal()">Chỉnh Sửa</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>PACKAGE</th>
+                            <th>NAME</th>
+                            <th>PRICE (VND)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key, price in data.prices.items() %}
+                        <tr>
+                            <td><span class="badge badge-info">{{ key }}</span></td>
+                            <td>{{ price.label }}</td>
+                            <td><strong>{{ "{:,}".format(price.amount) }}đ</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Coupons -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Quản Lí Coupon</h2>
+                <button class="btn btn-primary" onclick="showAddCouponModal()">
+                    <i class="fas fa-plus"></i> THÊM COUPON
+                </button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã</th>
+                            <th>GIẢM GIÁ</th>
+                            <th>LOẠI</th>
+                            <th>SỐ LƯỢNG CÒN LẠI</th>
+                            <th>HẾT HẠN</th>
+                            <th>THAO TÁC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if data.coupons %}
+                            {% for code, coupon in data.coupons.items() %}
+                            <tr>
+                                <td><code>{{ code }}</code></td>
+                                <td><strong>{{ coupon.discount }}%</strong></td>
+                                <td>
+                                    {% if coupon.type == 'unlimited' %}
+                                        <span class="badge badge-success">Không giới hạn</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">Giới hạn</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ coupon.uses_left if coupon.type != 'unlimited' else '∞' }}</td>
+                                <td>{{ coupon.expires_at if coupon.expires_at else 'Không' }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-action btn-edit" onclick="editCoupon('{{ code }}', this)" data-coupon="{{ coupon|tojson|safe|replace('&quot;', '&quot;') }}" title="Chỉnh sửa">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-action btn-delete" onclick="deleteCoupon('{{ code }}')" title="Xóa">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: rgba(255,255,255,0.3); font-size: 12px;">KHÔNG CÓ COUPON NÀO</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="section">
+            <div class="section-header">
+                <h2>ĐƠN HÀNG GẦN ĐÂY</h2>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>UID</th>
+                            <th>EMAIL</th>
+                            <th>CODE</th>
+                            <th>STATUS</th>
+                            <th>TIME</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in data.orders %}
+                        <tr>
+                            <td><code>{{ order.uid }}</code></td>
+                            <td>{{ order.email or 'N/A' }}</td>
+                            <td>{{ order.code }}</td>
+                            <td>
+                                {% if order.status == 'completed' %}
+                                    <span class="badge badge-success">COMPLETED</span>
+                                {% else %}
+                                    <span class="badge badge-warning">{{ order.status|upper }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ order.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Prices Modal -->
+    <div class="modal" id="editPricesModal">
+        <div class="modal-content">
+            <div class="liquidGlass-effect"></div>
+            <div class="liquidGlass-tint"></div>
+            <div class="liquidGlass-shine"></div>
+            
+            <div class="modal-header">
+                <h3><i class="fas fa-dollar-sign"></i> Chỉnh Sửa Giá</h3>
+                <button class="close-btn" onclick="closeModal('editPricesModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="editPricesAlert"></div>
+                <form id="editPricesForm">
+                    {% for key, price in data.prices.items() %}
+                    <div class="form-group">
+                        <label>{{ price.label }} ({{ key }})</label>
+                        <input 
+                            type="number" 
+                            id="price_{{ key }}"
+                            value="{{ price.amount }}"
+                            min="0"
+                            step="1000"
+                            required
+                        >
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-save"></i> Lưu Thay Đổi
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add/Edit Coupon Modal -->
+    <div class="modal" id="couponModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="couponModalTitle">Thêm Coupon Mới</h3>
+                <button class="close-btn" onclick="closeCouponModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="couponAlert"></div>
+                <form id="couponForm">
+                    <input type="hidden" id="editingCouponCode" value="">
+                    <div class="form-group">
+                        <label>Mã Coupon</label>
+                        <input type="text" id="couponCode" placeholder="Nhập mã coupon (VD: SALE20)" required>
+                        <small style="color: rgba(0,0,0,0.5); font-size: 11px;">Mã phải duy nhất, không chứa khoảng trắng</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Phần Trăm Giảm Giá (%)</label>
+                        <input type="number" id="couponDiscount" min="1" max="99" placeholder="20" required>
+                        <small style="color: rgba(0,0,0,0.5); font-size: 11px;">Từ 1% đến 99%</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Loại Coupon</label>
+                        <select id="couponType" onchange="toggleUsesLimit()" required>
+                            <option value="limited">Giới hạn số lần sử dụng</option>
+                            <option value="unlimited">Không giới hạn</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="usesGroup">
+                        <label>Số Lần Sử Dụng</label>
+                        <input type="number" id="couponUses" min="1" placeholder="10">
+                        <small style="color: rgba(0,0,0,0.5); font-size: 11px;">Số lần coupon có thể được sử dụng</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày Hết Hạn (Tùy chọn)</label>
+                        <input type="date" id="couponExpiry">
+                        <small style="color: rgba(0,0,0,0.5); font-size: 11px;">Để trống nếu không hết hạn</small>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;" id="couponSubmitBtn">Thêm Coupon</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeCouponModal()" style="flex: 1;">Hủy</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="addKeyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Thêm Key Mới</h3>
+                <button class="close-btn" onclick="closeModal('addKeyModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="addKeyAlert"></div>
+                <form id="addKeyForm">
+                    <div class="form-group">
+                        <label>Thời Gian</label>
+                        <select id="addKeyPeriod" required>
+                            <option value="1d">1 Ngày</option>
+                            <option value="7d">7 Ngày</option>
+                            <option value="30d">30 Ngày</option>
+                            <option value="90d">90 Ngày</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Giá Trị Key</label>
+                        <textarea id="addKeyValue" rows="5" placeholder="Nhập key(s) - mỗi dòng một key để thêm nhiều" required></textarea>
+                        <small style="color: rgba(0,0,0,0.5); font-size: 11px;">Nhiều key: mỗi dòng một key</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Thêm Key</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+                
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and its content
+                tab.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Modal functions
+        function showAddKeyModal() {
+            document.getElementById('addKeyModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function showAlert(elementId, message, type) {
+            const alertBox = document.getElementById(elementId);
+            alertBox.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                alertBox.innerHTML = '';
+            }, 3000);
+        }
+
+        // Add key form
+        document.getElementById('addKeyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const period = document.getElementById('addKeyPeriod').value;
+            const keysText = document.getElementById('addKeyValue').value.trim();
+            const keys = keysText.split('\n').map(k => k.trim()).filter(k => k);
+            
+            if (!keys.length) {
+                showAlert('addKeyAlert', 'Vui lòng nhập ít nhất một key', 'error');
+                return;
+            }
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const key of keys) {
+                try {
+                    const response = await fetch(`/admin/api/keys/${period}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                } catch (error) {
+                    errorCount++;
+                }
+            }
+
+            if (successCount > 0) {
+                showAlert('addKeyAlert', `Đã thêm ${successCount} key thành công`, 'success');
+                document.getElementById('addKeyValue').value = '';
+                setTimeout(() => {
+                    closeModal('addKeyModal');
+                    loadKeys(period);
+                }, 1500);
+            } else {
+                showAlert('addKeyAlert', 'Không thể thêm key', 'error');
+            }
+        });
+
+        // Load keys
+        async function loadKeys(period) {
+            try {
+                const response = await fetch(`/admin/api/keys/${period}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const listElement = document.getElementById(`keylist-${period}`);
+                    if (data.keys.length === 0) {
+                        listElement.innerHTML = '<p style="text-align: center; color: #999;">Chưa có key nào</p>';
+                    } else {
+                        let html = '';
+                        const displayKeys = data.keys.slice(0, 10);
+                        displayKeys.forEach(key => {
+                            html += `
+                                <div class="key-item">
+                                    <code>${key}</code>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteKey('${period}', '${key}')">Xóa</button>
+                                </div>
+                            `;
+                        });
+                        if (data.count > 10) {
+                            html += `<p style="text-align: center; margin-top: 10px; color: #666;">... và ${data.count - 10} keys khác</p>`;
+                        }
+                        listElement.innerHTML = html;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading keys:', error);
+            }
+        }
+
+        // Delete key
+        async function deleteKey(period, key) {
+            if (!confirm(`Bạn có chắc muốn xóa key này?\n${key}`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/api/keys/${period}/${encodeURIComponent(key)}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Đã xóa key thành công');
+                    loadKeys(period);
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            } catch (error) {
+                alert('Lỗi kết nối: ' + error.message);
+            }
+        }
+
+        function showEditPricesModal() {
+            document.getElementById('editPricesModal').classList.add('active');
+        }
+
+        // Edit prices form
+        document.getElementById('editPricesForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const prices = {};
+            
+            // Collect all price inputs
+            const inputs = e.target.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                const key = input.id.replace('price_', '');
+                prices[key] = parseInt(input.value);
+            });
+            
+            try {
+                const response = await fetch('/admin/api/prices', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prices })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('editPricesAlert', 'Prices updated successfully!', 'success');
+                    setTimeout(() => {
+                        closeModal('editPricesModal');
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showAlert('editPricesAlert', 'Error: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showAlert('editPricesAlert', 'Connection error: ' + error.message, 'error');
+            }
+        });
+
+        // Check API status
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch('/admin/api/mbbank-status');
+                const data = await response.json();
+                const statusElement = document.getElementById('apiStatus');
+                
+                if (data.success && data.status === 'online') {
+                    statusElement.innerHTML = '<span class="badge badge-success"><i class="fas fa-check-circle"></i> Online</span>';
+                } else {
+                    statusElement.innerHTML = '<span class="badge badge-error"><i class="fas fa-times-circle"></i> Offline</span>';
+                }
+            } catch (error) {
+                const statusElement = document.getElementById('apiStatus');
+                statusElement.innerHTML = '<span class="badge badge-warning"><i class="fas fa-exclamation-triangle"></i> Error</span>';
+            }
+        }
+
+        // Load API status on page load
+        checkAPIStatus();
+
+        // Refresh API status every 1s
+        setInterval(checkAPIStatus, 1000);
+
+        // ================== COUPON MANAGEMENT FUNCTIONS ==================
+
+        // Show add coupon modal
+        function showAddCouponModal() {
+            document.getElementById('couponModalTitle').textContent = 'Thêm Coupon Mới';
+            document.getElementById('couponSubmitBtn').textContent = 'Thêm Coupon';
+            document.getElementById('couponForm').reset();
+            document.getElementById('editingCouponCode').value = '';
+            document.getElementById('couponCode').disabled = false;
+            toggleUsesLimit();
+            document.getElementById('couponModal').classList.add('active');
+        }
+
+        // Show edit coupon modal
+        function editCoupon(code, buttonElement) {
+            const couponData = JSON.parse(buttonElement.getAttribute('data-coupon'));
+            
+            document.getElementById('couponModalTitle').textContent = 'Chỉnh Sửa Coupon';
+            document.getElementById('couponSubmitBtn').textContent = 'Cập Nhật Coupon';
+            document.getElementById('editingCouponCode').value = code;
+            
+            // Fill form with existing data
+            document.getElementById('couponCode').value = code;
+            document.getElementById('couponCode').disabled = true;
+            document.getElementById('couponDiscount').value = couponData.discount;
+            document.getElementById('couponType').value = couponData.type;
+            
+            if (couponData.type === 'limited') {
+                document.getElementById('couponUses').value = couponData.uses_left;
+            }
+            
+            if (couponData.expires_at && couponData.expires_at !== 'Không') {
+                document.getElementById('couponExpiry').value = couponData.expires_at;
+            }
+            
+            toggleUsesLimit();
+            document.getElementById('couponModal').classList.add('active');
+        }
+
+        // Close coupon modal
+        function closeCouponModal() {
+            document.getElementById('couponModal').classList.remove('active');
+            document.getElementById('couponForm').reset();
+            document.getElementById('couponAlert').innerHTML = '';
+        }
+
+        // Toggle uses limit field
+        function toggleUsesLimit() {
+            const type = document.getElementById('couponType').value;
+            const usesGroup = document.getElementById('usesGroup');
+            const usesInput = document.getElementById('couponUses');
+            
+            if (type === 'unlimited') {
+                usesGroup.style.display = 'none';
+                usesInput.required = false;
+            } else {
+                usesGroup.style.display = 'block';
+                usesInput.required = true;
+            }
+        }
+
+        // Delete coupon
+        async function deleteCoupon(code) {
+            if (!confirm(`Bạn có chắc muốn xóa coupon "${code}"?\\nHành động này không thể hoàn tác!`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/api/coupons/${encodeURIComponent(code)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Đã xóa coupon thành công!');
+                    location.reload(); // Refresh page to update coupon list
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể xóa coupon'));
+                }
+            } catch (error) {
+                alert('Lỗi kết nối: ' + error.message);
+            }
+        }
+
+        // Handle coupon form submission
+        document.getElementById('couponForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                code: document.getElementById('couponCode').value.trim().toUpperCase(),
+                discount: parseInt(document.getElementById('couponDiscount').value),
+                type: document.getElementById('couponType').value,
+                expires_at: document.getElementById('couponExpiry').value || null
+            };
+
+            // Validate coupon code format
+            if (!/^[A-Z0-9_-]+$/.test(formData.code)) {
+                showAlert('couponAlert', 'Mã coupon chỉ được chứa chữ cái, số, dấu gạch dưới và dấu gạch ngang!', 'error');
+                return;
+            }
+
+            // Add uses for limited coupons
+            if (formData.type === 'limited') {
+                const uses = parseInt(document.getElementById('couponUses').value);
+                if (!uses || uses < 1) {
+                    showAlert('couponAlert', 'Vui lòng nhập số lần sử dụng hợp lệ!', 'error');
+                    return;
+                }
+                formData.uses = uses;
+            }
+
+            const isEditing = document.getElementById('editingCouponCode').value;
+            const url = isEditing ? 
+                `/admin/api/coupons/${encodeURIComponent(isEditing)}` : 
+                '/admin/api/coupons';
+            const method = isEditing ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('couponAlert', 
+                        isEditing ? 'Cập nhật coupon thành công!' : 'Tạo coupon thành công!', 
+                        'success'
+                    );
+                    setTimeout(() => {
+                        closeCouponModal();
+                        location.reload(); // Refresh page to update coupon list
+                    }, 1500);
+                } else {
+                    showAlert('couponAlert', 'Lỗi: ' + (data.message || 'Không thể lưu coupon'), 'error');
+                }
+            } catch (error) {
+                showAlert('couponAlert', 'Lỗi kết nối: ' + error.message, 'error');
+            }
+        });
+
+        // ================== END COUPON MANAGEMENT FUNCTIONS ==================
+
+        // Close modals when clicking outside
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

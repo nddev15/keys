@@ -3,7 +3,7 @@ import sqlite3
 import string
 import random
 import json
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -14,6 +14,7 @@ from sendgrid.helpers.mail import Mail
 import threading
 from threading import Lock
 import base64
+import secrets
 
 # Import bot-related functions from bot.py
 from bot import bot, send_telegram, load_coupons, save_coupons, get_coupon, is_coupon_valid, use_coupon, start_bot
@@ -275,8 +276,11 @@ def get_github_manager():
 
 # =================== Cấu hình ===================
 app = Flask(__name__)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(32))
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 
 DB_FILE = "orders.db"
+AUTH_FILE = "data/dashboard/auth.json"
 
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "")
@@ -741,6 +745,173 @@ def send_key(email, key, uid, period="30 day"):
         traceback.print_exc()
         return False, f"Lỗi gửi email: {e}"
 
+# =================== Admin Dashboard Functions ===================
+# OTP storage: {email: {'code': '123456', 'expires': datetime, 'attempts': 0}}
+otp_storage = {}
+OTP_EXPIRY_MINUTES = 10
+MAX_OTP_ATTEMPTS = 5
+
+def load_auth_config():
+    """Load authorized emails from auth.json"""
+    try:
+        os.makedirs(os.path.dirname(AUTH_FILE), exist_ok=True)
+        if not os.path.exists(AUTH_FILE):
+            default_config = {"authorized_emails": [], "sessions": {}}
+            with open(AUTH_FILE, 'w', encoding='utf-8') as f:
+                json.dump(default_config, f, indent=2)
+            return default_config
+        
+        with open(AUTH_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[AUTH] Error loading auth config: {e}")
+        return {"authorized_emails": [], "sessions": {}}
+
+def is_email_authorized(email):
+    """Check if email is in authorized list"""
+    config = load_auth_config()
+    return email.lower() in [e.lower() for e in config.get("authorized_emails", [])]
+
+def generate_otp():
+    """Generate 6-digit OTP"""
+    return ''.join([str(random.randint(0, 9)) for _ in range(6)])
+
+def send_otp_email(email, otp):
+    """Send OTP to email"""
+    try:
+        if not SENDGRID_API_KEY or not FROM_EMAIL:
+            print("[OTP] SendGrid not configured")
+            return False, "Email service not configured"
+        
+        message = Mail(
+            from_email=FROM_EMAIL,
+            to_emails=email,
+            subject='Mã xác thực Admin Dashboard',
+            html_content=f'''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">Mã xác thực đăng nhập</h2>
+                <p>Mã OTP của bạn là:</p>
+                <div style="background: #f0f0f0; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
+                    {otp}
+                </div>
+                <p style="color: #666;">Mã này sẽ hết hiệu lực sau {OTP_EXPIRY_MINUTES} phút.</p>
+                <p style="color: #666; font-size: 12px;">Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>
+            </div>
+            '''
+        )
+        
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
+        
+        if response.status_code in [200, 201, 202]:
+            return True, "OTP sent successfully"
+        else:
+            return False, f"Failed to send OTP: {response.status_code}"
+            
+    except Exception as e:
+        print(f"[OTP EMAIL ERROR] {e}")
+        return False, str(e)
+
+def verify_otp(email, otp_code):
+    """Verify OTP code"""
+    if email not in otp_storage:
+        return False, "OTP not found or expired"
+    
+    stored = otp_storage[email]
+    
+    # Check expiry
+    if datetime.now() > stored['expires']:
+        del otp_storage[email]
+        return False, "OTP expired"
+    
+    # Check attempts
+    if stored['attempts'] >= MAX_OTP_ATTEMPTS:
+        del otp_storage[email]
+        return False, "Too many failed attempts"
+    
+    # Verify code
+    if stored['code'] != otp_code:
+        otp_storage[email]['attempts'] += 1
+        return False, "Invalid OTP"
+    
+    # Success - remove OTP
+    del otp_storage[email]
+    return True, "OTP verified"
+
+def require_admin_auth(f):
+    """Decorator to require admin authentication"""
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin_email' not in session:
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def get_all_dashboard_data():
+    """Get all data for dashboard"""
+    try:
+        data = {
+            'keys': {
+                '1d': {'count': count_keys('1d'), 'list': get_keys_by_type('1d')[:10]},
+                '7d': {'count': count_keys('7d'), 'list': get_keys_by_type('7d')[:10]},
+                '30d': {'count': count_keys('30d'), 'list': get_keys_by_type('30d')[:10]},
+                '90d': {'count': count_keys('90d'), 'list': get_keys_by_type('90d')[:10]},
+            },
+            'prices': load_prices(),
+            'coupons': load_coupons(),
+            'orders': get_recent_orders(20),
+            'stats': {
+                'total_keys': sum(count_keys(t) for t in ['1d', '7d', '30d', '90d']),
+                'total_orders': get_total_orders(),
+                'total_coupons': len(load_coupons()),
+            }
+        }
+        return data
+    except Exception as e:
+        print(f"[DASHBOARD DATA ERROR] {e}")
+        return {}
+
+def get_recent_orders(limit=20):
+    """Get recent orders from database"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT uid, code, email, status, created_at 
+            FROM orders 
+            ORDER BY created_at DESC 
+            LIMIT ?
+        """, (limit,))
+        orders = cursor.fetchall()
+        conn.close()
+        
+        return [
+            {
+                'uid': o[0],
+                'code': o[1],
+                'email': o[2],
+                'status': o[3],
+                'created_at': o[4]
+            }
+            for o in orders
+        ]
+    except Exception as e:
+        print(f"[GET ORDERS ERROR] {e}")
+        return []
+
+def get_total_orders():
+    """Get total number of orders"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM orders")
+        total = cursor.fetchone()[0]
+        conn.close()
+        return total
+    except:
+        return 0
+
 # =================== Flask Routes ===================
 @app.route("/")
 def index():
@@ -1107,6 +1278,251 @@ def debug_check_key(key):
             "sent_at": delivery_info[3]
         } if delivery_info else None
     })
+
+# =================== Admin Dashboard Routes ===================
+@app.route("/admin/login")
+def admin_login():
+    """Admin login page"""
+    if 'admin_email' in session:
+        return redirect(url_for('admin_dashboard'))
+    return render_template('admin_login.html')
+
+@app.route("/admin/send-otp", methods=["POST"])
+def admin_send_otp():
+    """Send OTP to email"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({'success': False, 'message': 'Email không được để trống'})
+        
+        # Check if email is authorized
+        if not is_email_authorized(email):
+            return jsonify({'success': False, 'message': 'Email không có quyền truy cập'})
+        
+        # Generate OTP
+        otp = generate_otp()
+        otp_storage[email] = {
+            'code': otp,
+            'expires': datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
+            'attempts': 0
+        }
+        
+        # Send OTP
+        success, message = send_otp_email(email, otp)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Mã OTP đã được gửi đến {email}',
+                'expires_in': OTP_EXPIRY_MINUTES
+            })
+        else:
+            return jsonify({'success': False, 'message': f'Lỗi gửi email: {message}'})
+            
+    except Exception as e:
+        print(f"[SEND OTP ERROR] {e}")
+        return jsonify({'success': False, 'message': f'Lỗi: {str(e)}'})
+
+@app.route("/admin/verify-otp", methods=["POST"])
+def admin_verify_otp():
+    """Verify OTP and login"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        otp = data.get('otp', '').strip()
+        remember_me = data.get('remember_me', False)
+        
+        if not email or not otp:
+            return jsonify({'success': False, 'message': 'Email và OTP không được để trống'})
+        
+        # Verify OTP
+        success, message = verify_otp(email, otp)
+        
+        if success:
+            # Create session
+            session['admin_email'] = email
+            session.permanent = True
+            
+            # Set session lifetime based on remember_me
+            if remember_me:
+                # 60 days
+                app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=60)
+            else:
+                # 24 hours (default)
+                app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Đăng nhập thành công',
+                'redirect': url_for('admin_dashboard')
+            })
+        else:
+            return jsonify({'success': False, 'message': message})
+            
+    except Exception as e:
+        print(f"[VERIFY OTP ERROR] {e}")
+        return jsonify({'success': False, 'message': f'Lỗi: {str(e)}'})
+
+@app.route("/admin/dashboard")
+@require_admin_auth
+def admin_dashboard():
+    """Admin dashboard page"""
+    data = get_all_dashboard_data()
+    return render_template('admin_dashboard.html', 
+                         data=data, 
+                         admin_email=session.get('admin_email'))
+
+@app.route("/admin/logout")
+def admin_logout():
+    """Logout admin"""
+    session.pop('admin_email', None)
+    return redirect(url_for('admin_login'))
+
+@app.route("/admin/api/keys/<period>", methods=["GET"])
+@require_admin_auth
+def admin_api_get_keys(period):
+    """Get all keys for a period"""
+    try:
+        keys = get_keys_by_type(period)
+        return jsonify({
+            'success': True,
+            'period': period,
+            'count': len(keys),
+            'keys': keys
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/keys/<period>", methods=["POST"])
+@require_admin_auth
+def admin_api_add_key(period):
+    """Add new key"""
+    try:
+        data = request.get_json()
+        key = data.get('key', '').strip()
+        
+        if not key:
+            return jsonify({'success': False, 'message': 'Key không được để trống'})
+        
+        # Add key to file
+        period_map = {'1d': 'key1d.txt', '7d': 'key7d.txt', '30d': 'key30d.txt', '90d': 'key90d.txt'}
+        if period not in period_map:
+            return jsonify({'success': False, 'message': 'Period không hợp lệ'})
+        
+        file_path = os.path.join('data/keys', period_map[period])
+        with open(file_path, 'a', encoding='utf-8') as f:
+            f.write(f"{key}\n")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Đã thêm key thành công',
+            'count': count_keys(period)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/keys/<period>/<key>", methods=["DELETE"])
+@require_admin_auth
+def admin_api_delete_key(period, key):
+    """Delete key"""
+    try:
+        success = delete_key(key, session.get('admin_email', ''))
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Đã xóa key thành công',
+                'count': count_keys(period)
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Không tìm thấy key'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/prices", methods=["GET", "POST"])
+@require_admin_auth
+def admin_api_prices():
+    """Get or update prices"""
+    try:
+        if request.method == "GET":
+            prices = load_prices()
+            return jsonify({'success': True, 'prices': prices})
+        else:
+            data = request.get_json()
+            prices = data.get('prices', {})
+            
+            # Save prices
+            prices_file = 'data/prices/prices.json'
+            os.makedirs(os.path.dirname(prices_file), exist_ok=True)
+            with open(prices_file, 'w', encoding='utf-8') as f:
+                json.dump(prices, f, indent=2, ensure_ascii=False)
+            
+            return jsonify({'success': True, 'message': 'Đã cập nhật giá thành công'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/coupons", methods=["GET"])
+@require_admin_auth
+def admin_api_get_coupons():
+    """Get all coupons"""
+    try:
+        coupons = load_coupons()
+        return jsonify({'success': True, 'coupons': coupons})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/stats", methods=["GET"])
+@require_admin_auth
+def admin_api_stats():
+    """Get dashboard statistics"""
+    try:
+        stats = {
+            'total_keys': sum(count_keys(t) for t in ['1d', '7d', '30d', '90d']),
+            'keys_by_type': {
+                '1d': count_keys('1d'),
+                '7d': count_keys('7d'),
+                '30d': count_keys('30d'),
+                '90d': count_keys('90d'),
+            },
+            'total_orders': get_total_orders(),
+            'total_coupons': len(load_coupons()),
+            'recent_orders': get_recent_orders(10)
+        }
+        return jsonify({'success': True, 'stats': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/mbbank-status", methods=["GET"])
+@require_admin_auth
+def admin_api_mbbank_status():
+    """Check MB Bank API status for admin dashboard"""
+    try:
+        # Sử dụng route existing để check status
+        from flask import Flask
+        with app.test_client() as client:
+            response = client.get('/api/mbbank/status')
+            data = response.get_json()
+            
+        if data and data.get('status') == 'active':
+            return jsonify({
+                'success': True,
+                'status': 'online',
+                'message': 'MB Bank API is running normally'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'status': 'offline',
+                'message': 'MB Bank API is not responding'
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'status': 'error',
+            'message': f'Error checking API: {str(e)}'
+        })
 
 # =================== Main ===================
 if __name__ == "__main__":

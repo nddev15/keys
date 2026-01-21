@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muakey.cloud - Admin Login</title>
+    <link rel="icon" href="https://files.catbox.moe/zrq6pf.png" type="image/x-icon" />
+    <link rel="shortcut icon" href="https://files.catbox.moe/zrq6pf.png" type="image/x-icon" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: url('https://www.publicdomainpictures.net/pictures/610000/velka/seamless-floral-wallpaper-art-1715193626Gct.jpg') center center;
+            background-size: 500px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            animation: moveBackground 60s linear infinite;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 0;
+        }
+
+        @keyframes moveBackground {
+            from { background-position: 0% 0%; }
+            to { background-position: 0% -1500%; }
+        }
+
+        .login-container {
+            position: relative;
+            display: flex;
+            max-width: 450px;
+            width: 100%;
+            overflow: hidden;
+            font-weight: 600;
+            color: black;
+            box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 28px;
+            padding: 1.5rem;
+        }
+
+        .liquidGlass-effect {
+            position: absolute;
+            z-index: 0;
+            inset: 0;
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            filter: url(#glass-distortion);
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .liquidGlass-tint {
+            z-index: 1;
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.45);
+        }
+
+        .liquidGlass-shine {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            overflow: hidden;
+            box-shadow: inset 2px 2px 1px 0 rgba(255, 255, 255, 0.7),
+                        inset -1px -1px 1px 1px rgba(255, 255, 255, 0.7);
+        }
+
+        .login-content {
+            position: relative;
+            z-index: 3;
+            width: 100%;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .login-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 16px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #333;
+        }
+
+        .login-header h1 {
+            color: #000;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+        }
+
+        .login-header p {
+            color: rgba(0, 0, 0, 0.6);
+            font-size: 14px;
+            font-weight: 400;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #000;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            color: #000;
+            transition: all 0.2s ease;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(0, 0, 0, 0.4);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .form-group input.invalid {
+            border-color: rgba(239, 68, 68, 0.5);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .form-group input.valid {
+            border-color: rgba(52, 211, 153, 0.5);
+            background: rgba(52, 211, 153, 0.05);
+        }
+
+        .form-error {
+            color: #dc2626;
+            font-size: 12px;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .form-error i {
+            font-size: 11px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .btn-primary {
+            background: rgba(255, 255, 255, 0.35);
+            color: #000;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5),
+                        0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.45);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert i {
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: rgba(52, 211, 153, 0.15);
+            color: #047857;
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .alert-info {
+            background: rgba(59, 130, 246, 0.15);
+            color: #2563eb;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .otp-section {
+            display: none;
+        }
+
+        .otp-section.active {
+            display: block;
+        }
+
+        .email-section.hidden {
+            display: none;
+        }
+
+        .timer {
+            text-align: center;
+            margin-top: 12px;
+            color: rgba(0, 0, 0, 0.6);
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .resend-link {
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        .resend-link a {
+            color: #2563eb;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .resend-link a:hover {
+            text-decoration: underline;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        .back-link a {
+            color: #2563eb;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            border-radius: 50%;
+            border-top-color: #000;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Remember Me Checkbox Styles */
+        .remember-group {
+            margin-bottom: 20px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        /* When checkbox is checked, change entire group background */
+        .remember-group:has(.remember-checkbox:checked) {
+            background: rgba(52, 211, 153, 0.2);
+            border-color: rgba(52, 211, 153, 0.4);
+            box-shadow: 0 2px 12px rgba(52, 211, 153, 0.15);
+        }
+
+        .remember-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            cursor: pointer;
+            position: relative;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .remember-checkbox {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+
+        .remember-success-icon {
+            position: relative;
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.4);
+            transition: all 0.3s ease;
+            order: -1; /* Move icon to the left of text */
+        }
+
+        .remember-checkbox:checked ~ .remember-success-icon {
+            color: rgba(52, 211, 153, 0.9);
+            transform: scale(1.1);
+            text-shadow: 0 2px 8px rgba(52, 211, 153, 0.3);
+        }
+
+
+        .remember-text {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(0, 0, 0, 0.8);
+            line-height: 1.3;
+            text-align: center;
+        }
+
+        .remember-text i {
+            color: rgba(59, 130, 246, 0.8);
+            font-size: 13px;
+        }
+
+        .remember-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 11px;
+            color: rgba(0, 0, 0, 0.6);
+            font-style: italic;
+            text-align: center;
+        }
+
+        .remember-info i {
+            color: rgba(255, 193, 7, 0.8);
+            font-size: 10px;
+        }
+
+        .remember-label:hover .remember-success-icon {
+            color: rgba(255, 255, 255, 0.6);
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 600px) {
+            .login-container {
+                padding: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- SVG Filters -->
+    <svg style="display: none">
+        <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+            <feTurbulence type="fractalNoise" baseFrequency="0.01 0.01" numOctaves="1" seed="5" result="turbulence"/>
+            <feComponentTransfer in="turbulence" result="mapped">
+                <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5"/>
+                <feFuncG type="gamma" amplitude="0" exponent="1" offset="0"/>
+                <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5"/>
+            </feComponentTransfer>
+            <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap"/>
+            <feSpecularLighting in="softMap" surfaceScale="5" specularConstant="1" specularExponent="100" lighting-color="white" result="specLight">
+                <fePointLight x="-200" y="-200" z="300"/>
+            </feSpecularLighting>
+            <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage"/>
+            <feDisplacementMap in="SourceGraphic" in2="softMap" scale="150" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+    </svg>
+
+    <div class="login-container">
+        <div class="liquidGlass-effect"></div>
+        <div class="liquidGlass-tint"></div>
+        <div class="liquidGlass-shine"></div>
+        
+        <div class="login-content">
+            <div class="login-header">
+                <div class="login-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <h1>Admin Access</h1>
+                <p>Secure OTP Authentication</p>
+            </div>
+
+        <div id="alertBox"></div>
+
+        <!-- Email Section -->
+        <div class="email-section" id="emailSection">
+            <form id="emailForm">
+                <div class="form-group">
+                    <label for="email">Email quản trị</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        placeholder="admin@example.com"
+                        required
+                        autocomplete="email"
+                        pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
+                    >
+                    <div id="emailError" class="form-error" style="display: none;"></div>
+                </div>
+                <div class="form-group remember-group">
+                    <label class="remember-label" for="rememberMe">
+                        <input type="checkbox" id="rememberMe" class="remember-checkbox" />
+                        <i class="fas fa-check-circle remember-success-icon"></i>
+                        <span class="remember-text">
+                            <i class="fas fa-shield-alt"></i>
+                            Ghi nhớ đăng nhập trong 60 ngày
+                        </span>
+                    </label>
+                    <small class="remember-info">
+                        <i class="fas fa-info-circle"></i>
+                        Chỉ sử dụng trên thiết bị cá nhân
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-primary" id="sendOtpBtn">
+                    Gửi mã OTP
+                </button>
+            </form>
+        </div>
+
+        <!-- OTP Section -->
+        <div class="otp-section" id="otpSection">
+            <form id="otpForm">
+                <div class="form-group">
+                    <label for="otp">Nhập mã OTP (6 chữ số)</label>
+                    <input 
+                        type="text" 
+                        id="otp" 
+                        placeholder="000000"
+                        maxlength="6"
+                        pattern="[0-9]{6}"
+                        required
+                        autocomplete="one-time-code"
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary" id="verifyOtpBtn">
+                    Xác nhận OTP
+                </button>
+                <div class="timer" id="timer"></div>
+                <div class="resend-link">
+                    <a href="#" id="resendLink">Gửi lại mã OTP</a>
+                </div>
+                <div class="back-link">
+                    <a href="#" id="backLink">← Quay lại</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const emailSection = document.getElementById('emailSection');
+        const otpSection = document.getElementById('otpSection');
+        const emailForm = document.getElementById('emailForm');
+        const otpForm = document.getElementById('otpForm');
+        const emailInput = document.getElementById('email');
+        const otpInput = document.getElementById('otp');
+        const sendOtpBtn = document.getElementById('sendOtpBtn');
+        const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+        const alertBox = document.getElementById('alertBox');
+        const timerDiv = document.getElementById('timer');
+        const resendLink = document.getElementById('resendLink');
+        const backLink = document.getElementById('backLink');
+
+        let currentEmail = '';
+        let timerInterval = null;
+
+        function showAlert(message, type = 'info') {
+            alertBox.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                alertBox.innerHTML = '';
+            }, 5000);
+        }
+
+        function validateEmail(email) {
+            const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+            return emailRegex.test(email);
+        }
+
+        function showEmailError(message) {
+            const emailError = document.getElementById('emailError');
+            emailInput.classList.add('invalid');
+            emailInput.classList.remove('valid');
+            emailError.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+            emailError.style.display = 'flex';
+        }
+
+        function hideEmailError() {
+            const emailError = document.getElementById('emailError');
+            emailInput.classList.remove('invalid');
+            emailError.style.display = 'none';
+        }
+
+        function markEmailValid() {
+            const emailError = document.getElementById('emailError');
+            emailInput.classList.add('valid');
+            emailInput.classList.remove('invalid');
+            emailError.style.display = 'none';
+        }
+
+        // Real-time email validation
+        emailInput.addEventListener('input', (e) => {
+            const email = e.target.value.trim();
+            if (email.length === 0) {
+                hideEmailError();
+                emailInput.classList.remove('valid');
+                return;
+            }
+            
+            if (!validateEmail(email)) {
+                showEmailError('Email không hợp lệ');
+            } else {
+                markEmailValid();
+            }
+        });
+
+        emailInput.addEventListener('blur', (e) => {
+            const email = e.target.value.trim();
+            if (email.length > 0 && !validateEmail(email)) {
+                showEmailError('Vui lòng nhập địa chỉ email hợp lệ');
+            }
+        });
+
+        function setButtonLoading(btn, loading) {
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span> Đang xử lý...';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = btn.id === 'sendOtpBtn' ? 'Gửi mã OTP' : 'Xác nhận OTP';
+            }
+        }
+
+        function startTimer(minutes) {
+            let seconds = minutes * 60;
+            
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+
+            timerInterval = setInterval(() => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                timerDiv.textContent = `Mã OTP hết hạn sau: ${mins}:${secs.toString().padStart(2, '0')}`;
+                
+                if (seconds <= 0) {
+                    clearInterval(timerInterval);
+                    timerDiv.textContent = 'Mã OTP đã hết hạn';
+                    showAlert('Mã OTP đã hết hạn. Vui lòng gửi lại.', 'error');
+                }
+                seconds--;
+            }, 1000);
+        }
+
+        emailForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = emailInput.value.trim();
+            if (!email) {
+                showEmailError('Vui lòng nhập email');
+                showAlert('Vui lòng nhập email', 'error');
+                emailInput.focus();
+                return;
+            }
+
+            if (!validateEmail(email)) {
+                showEmailError('Địa chỉ email không hợp lệ');
+                showAlert('Vui lòng nhập địa chỉ email hợp lệ', 'error');
+                emailInput.focus();
+                return;
+            }
+
+            setButtonLoading(sendOtpBtn, true);
+
+            try {
+                const response = await fetch('/admin/send-otp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentEmail = email;
+                    emailSection.classList.add('hidden');
+                    otpSection.classList.add('active');
+                    showAlert(data.message, 'success');
+                    startTimer(data.expires_in || 10);
+                    otpInput.focus();
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                showAlert('Lỗi kết nối. Vui lòng thử lại.', 'error');
+            } finally {
+                setButtonLoading(sendOtpBtn, false);
+            }
+        });
+
+        otpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const otp = otpInput.value.trim();
+            if (!otp || otp.length !== 6) {
+                showAlert('Vui lòng nhập mã OTP 6 chữ số', 'error');
+                return;
+            }
+
+            const rememberMe = document.getElementById('rememberMe').checked;
+            
+            // Show remember me confirmation
+            if (rememberMe) {
+                showAlert('Đăng nhập sẽ được ghi nhớ trong 60 ngày', 'info');
+            }
+            
+            setButtonLoading(verifyOtpBtn, true);
+
+            try {
+                const response = await fetch('/admin/verify-otp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        email: currentEmail,
+                        otp,
+                        remember_me: rememberMe
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1000);
+                } else {
+                    showAlert(data.message, 'error');
+                    otpInput.value = '';
+                    otpInput.focus();
+                }
+            } catch (error) {
+                showAlert('Lỗi kết nối. Vui lòng thử lại.', 'error');
+            } finally {
+                setButtonLoading(verifyOtpBtn, false);
+            }
+        });
+
+        resendLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            try {
+                const response = await fetch('/admin/send-otp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: currentEmail })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('Đã gửi lại mã OTP', 'success');
+                    startTimer(data.expires_in || 10);
+                    otpInput.value = '';
+                    otpInput.focus();
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                showAlert('Lỗi kết nối. Vui lòng thử lại.', 'error');
+            }
+        });
+
+        backLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            otpSection.classList.remove('active');
+            emailSection.classList.remove('hidden');
+            otpInput.value = '';
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            timerDiv.textContent = '';
+        });
+
+        // Auto-focus email input on page load
+        emailInput.focus();
+    </script>
+</body>
+</html>

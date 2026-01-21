@@ -222,7 +222,7 @@ def get_github_manager():
     return github_manager
 
 # =================== Bot Configuration ===================
-TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
+TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 TG_CHAT_ID = "7454505306"
 COUPON_FILE = os.path.join("data", "coupon", "coupons.json")
 ADMIN_FILE = os.path.join("data", "admin", "admin.json")
@@ -874,7 +874,7 @@ def handle_back_to_main(call):
     )
     
     bot.edit_message_text(
-        "👋 <b>Chào mừng đến với Bot Quản Lý!</b>\n\n"
+        "👋 <b>Chào mừng đến với Bot Quản Lý Thuộc Muakey.cloud!</b>\n\n"
         "📋 Chọn danh mục bạn muốn quản lý:",
         chat_id,
         call.message.id,
@@ -2410,12 +2410,15 @@ def broadcast_message(message):
     """Broadcast message to all users"""
     chat_id = message.chat.id
     
+    print(f"[BROADCAST] Function called by user {chat_id}")
+    
     if not is_admin(chat_id):
         bot.send_message(chat_id, "❌ Bạn không có quyền sử dụng lệnh này!")
         return
     
     # Set user state
     user_states[chat_id] = {"step": "waiting_broadcast_message"}
+    print(f"[BROADCAST] User state set for {chat_id}: waiting_broadcast_message")
     
     msg = (
         "📢 <b>Tin nhắn Server</b>\n\n"
@@ -2430,7 +2433,16 @@ def broadcast_message(message):
 def handle_broadcast_message(message):
     """Handle broadcast message input"""
     chat_id = message.chat.id
+    
+    print(f"[BROADCAST] Handling broadcast message from {chat_id}")
+    
+    # Check if message has text
+    if not message.text:
+        bot.send_message(chat_id, "❌ Vui lòng chỉ gửi tin nhắn dạng text!")
+        return
+    
     broadcast_text = message.text
+    print(f"[BROADCAST] Broadcast text: {broadcast_text[:50]}...")
     
     # Check if user wants to cancel
     if broadcast_text == "/huy":
@@ -2455,12 +2467,15 @@ def handle_broadcast_message(message):
     # Store broadcast message in user state
     user_states[chat_id]["broadcast_text"] = broadcast_text
     
+    # Escape HTML in preview to show exact content
+    preview_text = broadcast_text.replace("<", "&lt;").replace(">", "&gt;")
+    
     preview_msg = (
         f"📢 <b>Xác nhận Broadcast</b>\n\n"
         f"👥 Số users nhận: {len(users)}\n\n"
         f"📝 <b>Nội dung tin nhắn:</b>\n"
         f"{'─' * 30}\n"
-        f"{broadcast_text}\n"
+        f"<code>{preview_text}</code>\n"
         f"{'─' * 30}\n\n"
         f"⚠️ Bạn có chắc muốn gửi tin nhắn này đến tất cả users?"
     )
@@ -2493,7 +2508,11 @@ def handle_confirm_broadcast(call):
     
     for i, user_id in enumerate(users, 1):
         try:
-            bot.send_message(user_id, broadcast_text, parse_mode="HTML")
+            # Try with HTML first, fallback to plain text if fails
+            try:
+                bot.send_message(user_id, broadcast_text, parse_mode="HTML")
+            except:
+                bot.send_message(user_id, broadcast_text)
             success_count += 1
         except Exception as e:
             failed_count += 1
@@ -2515,6 +2534,7 @@ def handle_confirm_broadcast(call):
                 pass
     
     # Final result
+    preview_text = broadcast_text.replace("<", "&lt;").replace(">", "&gt;")
     result_msg = (
         f"✅ <b>Hoàn tất broadcast!</b>\n\n"
         f"📊 <b>Thống kê:</b>\n"
@@ -2522,7 +2542,7 @@ def handle_confirm_broadcast(call):
         f"• Thành công: {success_count}\n"
         f"• Thất bại: {failed_count}\n\n"
         f"📝 <b>Nội dung đã gửi:</b>\n"
-        f"{broadcast_text}"
+        f"<code>{preview_text[:100]}{'...' if len(preview_text) > 100 else ''}</code>"
     )
     
     bot.edit_message_text(result_msg, chat_id, status_msg.message_id, parse_mode="HTML")
