@@ -586,12 +586,18 @@
                     </div>
                     <h3 class="popup-title">Thành Công!</h3>
                     <p class="popup-message">${message}</p>
-                    <button class="popup-button success" onclick="closePopup(this)">
+                    <button class="popup-button success user-success-ok-btn">
                         <i class="fas fa-check"></i> OK
                     </button>
                 </div>
             </div>
         `;
+        
+        // Add event listener
+        const okBtn = overlay.querySelector('.user-success-ok-btn');
+        okBtn.addEventListener('click', () => {
+            closePopup(overlay);
+        });
         
         // Add click outside to close
         overlay.addEventListener('click', function(e) {
@@ -618,12 +624,18 @@
                     </div>
                     <h3 class="popup-title">Lỗi!</h3>
                     <p class="popup-message">${message}</p>
-                    <button class="popup-button error" onclick="closePopup(this)">
+                    <button class="popup-button error user-error-close-btn">
                         <i class="fas fa-times"></i> Đóng
                     </button>
                 </div>
             </div>
         `;
+        
+        // Add event listener
+        const closeBtn = overlay.querySelector('.user-error-close-btn');
+        closeBtn.addEventListener('click', () => {
+            closePopup(overlay);
+        });
         
         // Add click outside to close
         overlay.addEventListener('click', function(e) {

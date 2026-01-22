@@ -279,6 +279,9 @@ def get_github_manager():
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(32))
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 DB_FILE = "orders.db"
 AUTH_FILE = "data/dashboard/auth.json"
@@ -290,6 +293,43 @@ MB_API_URL = "https://thueapibank.vn/historyapimbbankv2/07bf677194ae4972714f01a3
 
 # Tạo folder data/keys nếu chưa tồn tại
 os.makedirs("data/keys", exist_ok=True)
+
+@app.before_request
+def manage_session():
+    """Manage session expiration and validation"""
+    # Skip for static files and login routes
+    if (request.endpoint and 
+        (request.endpoint.startswith('static') or
+         request.endpoint in ['admin_login', 'admin_send_otp', 'admin_verify_otp', 'admin_login_password'])):
+        return
+    
+    # Check admin session
+    if 'admin_email' in session:
+        admin_email = session.get('admin_email')
+        
+        # Verify email is still authorized
+        if not admin_email or not is_email_authorized(admin_email):
+            session.pop('admin_email', None)
+            if request.endpoint and request.endpoint.startswith('admin'):
+                return redirect(url_for('admin_login'))
+        
+        # Handle session lifetime based on user preference
+        session_lifetime = session.get('session_lifetime', 'normal')
+        if session_lifetime == 'extended':
+            app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=60)
+        else:
+            app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+        
+        # Refresh session to prevent timeout
+        session.permanent = True
+
+@app.after_request
+def refresh_session(response):
+    """Refresh session after each request to prevent expiration"""
+    if 'admin_email' in session:
+        # Touch session to keep it alive
+        session.modified = True
+    return response
 
 def initialize_key_files():
     """Initialize key files from image build if persistent volume is empty"""
@@ -1075,8 +1115,16 @@ def require_admin_auth(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Check if session exists
         if 'admin_email' not in session:
             return redirect(url_for('admin_login'))
+        
+        # Check if email is still authorized
+        admin_email = session.get('admin_email')
+        if not admin_email or not is_email_authorized(admin_email):
+            session.pop('admin_email', None)  # Clear invalid session
+            return redirect(url_for('admin_login'))
+        
         return f(*args, **kwargs)
     return decorated_function
 
@@ -1115,7 +1163,7 @@ def get_recent_orders(limit=20):
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT uid, verification_code, email, paid, created_at 
+            SELECT id, uid, verification_code, email, paid, created_at 
             FROM orders 
             ORDER BY created_at DESC 
             LIMIT ?
@@ -1125,11 +1173,12 @@ def get_recent_orders(limit=20):
         
         return [
             {
-                'uid': o[0],
-                'code': o[1],
-                'email': o[2],
-                'status': 'Paid' if o[3] == 1 else 'Pending',
-                'created_at': o[4]
+                'id': o[0],
+                'uid': o[1],
+                'code': o[2],
+                'email': o[3],
+                'status': 'Paid' if o[4] == 1 else 'Pending',
+                'created_at': o[5]
             }
             for o in orders
         ]
@@ -1865,15 +1914,13 @@ def admin_verify_otp():
         if success:
             # Create session
             session['admin_email'] = email
-            session.permanent = True
+            session.permanent = True  # Always set permanent to use PERMANENT_SESSION_LIFETIME
             
-            # Set session lifetime based on remember_me
+            # Store session lifetime preference in session itself
             if remember_me:
-                # 60 days
-                app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=60)
+                session['session_lifetime'] = 'extended'  # 60 days
             else:
-                # 24 hours (default)
-                app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+                session['session_lifetime'] = 'normal'    # 24 hours
             
             return jsonify({
                 'success': True,
@@ -1900,31 +1947,24 @@ def admin_login_password():
         
         # Load password_access from auth.json
         config = load_auth_config()
-        password_access = config.get('password_access', {})
+        password_access = config.get('password_access', [])
         
-        # Find email by password
-        email = None
-        for user_email, user_password in password_access.items():
-            if user_password == password:
-                email = user_email
-                break
-        
-        if not email:
+        # Check if password exists in array
+        if password not in password_access:
             return jsonify({'success': False, 'message': 'Password không chính xác'})
         
-        # Check if email is authorized (double check)
-        if not is_email_authorized(email):
-            return jsonify({'success': False, 'message': 'Tài khoản không có quyền truy cập'})
+        # Use owner email for login (since we don't need specific email)
+        owner_email = config.get('owner_email', 'lewisvn1234@gmail.com')
         
-        # Create session
-        session['admin_email'] = email
-        session.permanent = True
+        # Create session with owner email
+        session['admin_email'] = owner_email
+        session.permanent = True  # Always set permanent to use PERMANENT_SESSION_LIFETIME
         
-        # Set session lifetime based on remember_me
+        # Store session lifetime preference in session itself
         if remember_me:
-            app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=60)
+            session['session_lifetime'] = 'extended'  # 60 days
         else:
-            app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+            session['session_lifetime'] = 'normal'    # 24 hours
         
         return jsonify({
             'success': True,
@@ -2324,7 +2364,7 @@ def admin_api_get_orders():
         
         if status_filter == 'paid':
             cursor.execute("""
-                SELECT uid, verification_code, email, key, promo_code, paid, created_at 
+                SELECT id, uid, verification_code, email, key, promo_code, paid, created_at 
                 FROM orders 
                 WHERE paid = 1
                 ORDER BY created_at DESC 
@@ -2332,7 +2372,7 @@ def admin_api_get_orders():
             """, (limit,))
         elif status_filter == 'pending':
             cursor.execute("""
-                SELECT uid, verification_code, email, key, promo_code, paid, created_at 
+                SELECT id, uid, verification_code, email, key, promo_code, paid, created_at 
                 FROM orders 
                 WHERE paid = 0
                 ORDER BY created_at DESC 
@@ -2340,7 +2380,7 @@ def admin_api_get_orders():
             """, (limit,))
         else:
             cursor.execute("""
-                SELECT uid, verification_code, email, key, promo_code, paid, created_at 
+                SELECT id, uid, verification_code, email, key, promo_code, paid, created_at 
                 FROM orders 
                 ORDER BY created_at DESC 
                 LIMIT ?
@@ -2353,13 +2393,14 @@ def admin_api_get_orders():
             'success': True,
             'orders': [
                 {
-                    'uid': o[0],
-                    'code': o[1],
-                    'email': o[2] or '',
-                    'key': o[3] or '',
-                    'promo_code': o[4] or '',
-                    'status': 'Paid' if o[5] == 1 else 'Pending',
-                    'created_at': o[6]
+                    'id': o[0],
+                    'uid': o[1],
+                    'code': o[2],
+                    'email': o[3] or '',
+                    'key': o[4] or '',
+                    'promo_code': o[5] or '',
+                    'status': 'Paid' if o[6] == 1 else 'Pending',
+                    'created_at': o[7]
                 }
                 for o in orders
             ]

@@ -367,7 +367,7 @@ def load_orders_from_db(status=None, limit=50):
         
         if status == "paid":
             cursor.execute("""
-                SELECT uid, email, key, verification_code, promo_code, paid, created_at
+                SELECT id, uid, email, key, verification_code, promo_code, paid, created_at
                 FROM orders 
                 WHERE paid = 1
                 ORDER BY created_at DESC
@@ -375,7 +375,7 @@ def load_orders_from_db(status=None, limit=50):
             """, (limit,))
         elif status == "pending":
             cursor.execute("""
-                SELECT uid, email, key, verification_code, promo_code, paid, created_at
+                SELECT id, uid, email, key, verification_code, promo_code, paid, created_at
                 FROM orders 
                 WHERE paid = 0
                 ORDER BY created_at DESC
@@ -383,7 +383,7 @@ def load_orders_from_db(status=None, limit=50):
             """, (limit,))
         else:
             cursor.execute("""
-                SELECT uid, email, key, verification_code, promo_code, paid, created_at
+                SELECT id, uid, email, key, verification_code, promo_code, paid, created_at
                 FROM orders 
                 ORDER BY created_at DESC
                 LIMIT ?
@@ -395,13 +395,14 @@ def load_orders_from_db(status=None, limit=50):
         orders = []
         for row in rows:
             orders.append({
-                'uid': row[0],
-                'email': row[1] or 'N/A',
-                'key': row[2] or 'N/A',
-                'verification_code': row[3],
-                'promo_code': row[4] or 'N/A',
-                'paid': row[5],
-                'created_at': row[6]
+                'id': row[0],
+                'uid': row[1],
+                'email': row[2] or 'N/A',
+                'key': row[3] or 'N/A',
+                'verification_code': row[4],
+                'promo_code': row[5] or 'N/A',
+                'paid': row[6],
+                'created_at': row[7]
             })
         
         return orders
@@ -1162,6 +1163,7 @@ def handle_order_detail_callback(call):
     
     msg = (
         f"📦 <b>Chi tiết Order</b>\n\n"
+        f"#️⃣ <b>ID:</b> <code>{order['id']}</code>\n"
         f"🆔 <b>UID:</b> <code>{order['uid']}</code>\n"
         f"📧 <b>Email:</b> {order['email']}\n"
         f"🔑 <b>Key:</b> <code>{order['key']}</code>\n"
@@ -1220,7 +1222,7 @@ def display_orders_list(chat_id, message_id, orders, title, filter_type):
     for i, order in enumerate(orders[:10], 1):
         status_emoji = "✅" if order['paid'] else "⏳"
         msg += (
-            f"{i}. {status_emoji} <code>{order['uid'][:8]}...</code>\n"
+            f"{i}. {status_emoji} ID: <b>{order['id']}</b> | <code>{order['uid'][:8]}...</code>\n"
             f"   📧 {order['email']}\n"
             f"   📅 {order['created_at']}\n\n"
         )
@@ -1266,6 +1268,7 @@ def handle_order_search(message):
     msg = (
         f"🔍 <b>Kết quả tìm kiếm</b>\n\n"
         f"📦 <b>Chi tiết Order</b>\n\n"
+        f"#️⃣ <b>ID:</b> <code>{order['id']}</code>\n"
         f"🆔 <b>UID:</b> <code>{order['uid']}</code>\n"
         f"📧 <b>Email:</b> {order['email']}\n"
         f"🔑 <b>Key:</b> <code>{order['key']}</code>\n"
@@ -1938,8 +1941,8 @@ def rut_gon_link(message):
         types.InlineKeyboardButton("🔗 TinyURL", callback_data="shorten_tinyurl"),
         types.InlineKeyboardButton("🔗 is.gd", callback_data="shorten_isgd")
     )
-    markup.add(types.InlineKeyboardButton("� v.gd", callback_data="shorten_vgd"))
-    markup.add(types.InlineKeyboardButton("�🔙 Quay lại danh mục", callback_data="category_links"))
+    markup.add(types.InlineKeyboardButton("🔗 v.gd", callback_data="shorten_vgd"))
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_links"))
     bot.send_message(chat_id, "🔗 <b>Chọn dịch vụ rút gọn link:</b>", reply_markup=markup, parse_mode="HTML")
     user_states[chat_id] = {"step": "waiting_service_choice"}
 

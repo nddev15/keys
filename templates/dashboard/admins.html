@@ -254,7 +254,7 @@
                 <div class="liquidGlass-effect"></div>
                 <div class="liquidGlass-tint"></div>
                 <div class="liquidGlass-shine"></div>
-                <button class="popup-close-btn" onclick="closePopup()">
+                <button class="popup-close-btn admin-close-btn">
                     <i class="fas fa-times"></i>
                 </button>
                 <div style="position: relative; z-index: 1; padding: 32px;">
@@ -286,7 +286,7 @@
                     </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <button class="btn btn-secondary ripple" onclick="closePopup()">
+                        <button class="btn btn-secondary ripple admin-cancel-btn">
                             <i class="fas fa-times"></i> Hủy
                         </button>
                         <button class="btn btn-primary ripple" id="savePermissionsBtn">
@@ -300,8 +300,28 @@
         document.body.appendChild(overlay);
         setTimeout(() => overlay.classList.add('active'), 10);
         
+        // Add event listeners
+        const closeBtn = overlay.querySelector('.admin-close-btn');
+        const cancelBtn = overlay.querySelector('.admin-cancel-btn');
+        const saveBtn = overlay.querySelector('#savePermissionsBtn');
+        
+        closeBtn.addEventListener('click', () => {
+            closePopup();
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            closePopup();
+        });
+        
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closePopup();
+            }
+        });
+        
         // Save permissions
-        document.getElementById('savePermissionsBtn').onclick = async () => {
+        saveBtn.addEventListener('click', async () => {
             const newPerms = {};
             Object.keys(permLabels).forEach(key => {
                 newPerms[key] = document.getElementById(`perm_${key}`).checked;
@@ -326,7 +346,7 @@
             } catch (error) {
                 showErrorNotification('Lỗi kết nối: ' + error.message);
             }
-        };
+        });
     }
 
     // Load on page load
