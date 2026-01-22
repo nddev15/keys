@@ -9,6 +9,192 @@
     100% { transform: rotate(360deg); }
 }
 
+@keyframes popupFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes popupFadeOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.popup-overlay.active {
+    opacity: 1;
+}
+
+.popup-overlay.closing {
+    opacity: 0;
+}
+
+.popup-container {
+    background: var(--glass-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: hidden;
+    position: relative;
+    transform: scale(0.8);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.popup-overlay.active .popup-container {
+    transform: scale(1);
+}
+
+.popup-overlay.closing .popup-container {
+    transform: scale(0.8);
+}
+
+.popup-content {
+    position: relative;
+    z-index: 1;
+    padding: 32px;
+    text-align: center;
+}
+
+.popup-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+}
+
+.popup-icon::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+    transform: rotate(45deg);
+    animation: shine 2s ease-in-out infinite;
+}
+
+@keyframes shine {
+    0%, 100% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    50% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.popup-icon.success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.4);
+}
+
+.popup-icon.error {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.4);
+}
+
+.popup-title {
+    margin-bottom: 16px;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.popup-message {
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    line-height: 1.5;
+    font-size: 16px;
+}
+
+.popup-button {
+    position: relative;
+    width: 100%;
+    padding: 16px 24px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.popup-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.popup-button.success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+}
+
+.popup-button.error {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+}
+
+.popup-button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.popup-button:active::before {
+    width: 300px;
+    height: 300px;
+}
+
 .file-upload-zone {
     border: 2px dashed var(--border-color);
     border-radius: 12px;
@@ -292,13 +478,17 @@
 
     // Show Upload Progress
     function showUploadProgress() {
+        closeAllPopups(); // Close any existing popups first
+        
         const progress = document.createElement('div');
         progress.id = 'uploadProgress';
+        progress.className = 'popup-overlay active';
         progress.innerHTML = `
-            <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-                <div style="background: var(--glass-bg); padding: 24px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center; min-width: 250px;">
-                    <div style="width: 40px; height: 40px; margin: 0 auto 16px; border: 3px solid var(--primary-color); border-top: 3px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <p style="color: var(--text-primary); margin: 0;">Đang upload file...</p>
+            <div class="popup-container" style="max-width: 350px;">
+                <div class="popup-content">
+                    <div style="width: 80px; height: 80px; margin: 0 auto 24px; border: 4px solid var(--primary-color); border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <h3 class="popup-title">Đang Upload...</h3>
+                    <p class="popup-message">Vui lòng đợi trong giây lát</p>
                 </div>
             </div>
         `;
@@ -384,53 +574,104 @@
 
     // Success Popup
     function showSuccessPopup(message) {
+        closeAllPopups(); // Close any existing popups first
+        
         const overlay = document.createElement('div');
         overlay.className = 'popup-overlay';
         overlay.innerHTML = `
-            <div class="popup-container" style="max-width: 400px;">
-                <div class="liquidGlass-effect"></div>
-                <div class="liquidGlass-tint"></div>
-                <div class="liquidGlass-shine"></div>
-                <div style="position: relative; z-index: 1; padding: 32px; text-align: center;">
-                    <div style="width: 64px; height: 64px; margin: 0 auto 20px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);">
-                        <i class="fas fa-check" style="font-size: 32px; color: #fff;"></i>
+            <div class="popup-container" style="max-width: 420px;">
+                <div class="popup-content">
+                    <div class="popup-icon success">
+                        <i class="fas fa-check"></i>
                     </div>
-                    <h3 style="margin-bottom: 12px; font-size: 20px; color: var(--text-primary);">Thành Công!</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 24px;">${message}</p>
-                    <button class="btn btn-primary ripple" onclick="closePopup()" style="width: 100%;">
+                    <h3 class="popup-title">Thành Công!</h3>
+                    <p class="popup-message">${message}</p>
+                    <button class="popup-button success" onclick="closePopup(this)">
                         <i class="fas fa-check"></i> OK
                     </button>
                 </div>
             </div>
         `;
+        
+        // Add click outside to close
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                closePopup(overlay);
+            }
+        });
+        
         document.body.appendChild(overlay);
         setTimeout(() => overlay.classList.add('active'), 10);
     }
 
     // Error Popup
     function showErrorPopup(message) {
+        closeAllPopups(); // Close any existing popups first
+        
         const overlay = document.createElement('div');
         overlay.className = 'popup-overlay';
         overlay.innerHTML = `
-            <div class="popup-container" style="max-width: 400px;">
-                <div class="liquidGlass-effect"></div>
-                <div class="liquidGlass-tint"></div>
-                <div class="liquidGlass-shine"></div>
-                <div style="position: relative; z-index: 1; padding: 32px; text-align: center;">
-                    <div style="width: 64px; height: 64px; margin: 0 auto 20px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);">
-                        <i class="fas fa-exclamation" style="font-size: 32px; color: #fff;"></i>
+            <div class="popup-container" style="max-width: 420px;">
+                <div class="popup-content">
+                    <div class="popup-icon error">
+                        <i class="fas fa-exclamation"></i>
                     </div>
-                    <h3 style="margin-bottom: 12px; font-size: 20px; color: var(--text-primary);">Lỗi!</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 24px;">${message}</p>
-                    <button class="btn btn-danger ripple" onclick="closePopup()" style="width: 100%;">
+                    <h3 class="popup-title">Lỗi!</h3>
+                    <p class="popup-message">${message}</p>
+                    <button class="popup-button error" onclick="closePopup(this)">
                         <i class="fas fa-times"></i> Đóng
                     </button>
                 </div>
             </div>
         `;
+        
+        // Add click outside to close
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                closePopup(overlay);
+            }
+        });
+        
         document.body.appendChild(overlay);
         setTimeout(() => overlay.classList.add('active'), 10);
     }
+
+    // Close popup function
+    function closePopup(element) {
+        let overlay;
+        
+        if (element.classList && element.classList.contains('popup-overlay')) {
+            overlay = element;
+        } else {
+            // Find the closest popup overlay
+            overlay = element.closest ? element.closest('.popup-overlay') : 
+                     document.querySelector('.popup-overlay');
+        }
+        
+        if (overlay) {
+            overlay.classList.add('closing');
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        }
+    }
+
+    // Close all popups
+    function closeAllPopups() {
+        const popups = document.querySelectorAll('.popup-overlay');
+        popups.forEach(popup => {
+            closePopup(popup);
+        });
+    }
+
+    // Escape key to close popup
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeAllPopups();
+        }
+    });
 
     // Initialize
     loadUserSettings();
