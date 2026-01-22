@@ -15,6 +15,7 @@ import threading
 from threading import Lock
 import base64
 import secrets
+from functools import wraps
 
 # Import bot-related functions from bot.py
 from bot import bot, send_telegram, load_coupons, save_coupons, get_coupon, is_coupon_valid, use_coupon, start_bot

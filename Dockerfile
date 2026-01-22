@@ -25,7 +25,7 @@ RUN mkdir -p /app/initial_data && \
     
 
 # Ensure data directories exist with write permissions
-RUN mkdir -p /app/data/keys /app/data/coupon /app/data/links /app/data/shortenurl /app/data/prices /app/data/dashboard /app/data/admin /app/data/users /app/data/settings /app/data/links && \
+RUN mkdir -p /app/data/keys /app/data/coupon /app/data/links /app/data/shortenurl /app/data/prices /app/data/dashboard /app/data/admin /app/data/users /app/data/settings && \
     chmod -R 777 /app/data && \
     ls -la /app/data/keys/
 
