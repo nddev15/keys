@@ -1,15 +1,1 @@
-{
-  "MDUCGAY": {
-    "discount": 25,
-    "type": "limited",
-    "uses_left": 0,
-    "expires_at": "2026-12-31",
-    "types": [
-      "1d",
-      "7d", 
-      "30d",
-      "90d"
-    ],
-    "created_at": "2026-01-21 00:00:00"
-  }
-}
+{}
