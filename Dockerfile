@@ -26,7 +26,9 @@ RUN mkdir -p /app/initial_data && \
 
 # Ensure data directories exist with write permissions
 RUN mkdir -p /app/data/keys /app/data/coupon /app/data/links /app/data/shortenurl /app/data/prices /app/data/dashboard /app/data/admin /app/data/users /app/data/settings && \
+    mkdir -p /app/static/uploads && \
     chmod -R 777 /app/data && \
+    chmod -R 777 /app/static/uploads && \
     chmod +x /app/init.sh
 
 EXPOSE 8080

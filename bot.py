@@ -847,7 +847,7 @@ def start(message):
         types.InlineKeyboardButton("🔗 Rút gọn Link", callback_data="category_links")
     )
     markup.add(
-        types.InlineKeyboardButton("� Quản lý Orders", callback_data="category_orders"),
+        types.InlineKeyboardButton("🛒 Quản lý Orders", callback_data="category_orders"),
         types.InlineKeyboardButton("👥 Quản lý Admin", callback_data="category_admin")
     )
     markup.add(
@@ -1025,7 +1025,7 @@ def handle_back_to_main(call):
         types.InlineKeyboardButton("🔗 Rút gọn Link", callback_data="category_links")
     )
     markup.add(
-        types.InlineKeyboardButton("� Quản lý Orders", callback_data="category_orders"),
+        types.InlineKeyboardButton("🛒 Quản lý Orders", callback_data="category_orders"),
         types.InlineKeyboardButton("👥 Quản lý Admin", callback_data="category_admin")
     )
     markup.add(

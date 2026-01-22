@@ -2577,6 +2577,61 @@ def admin_api_user_settings():
             'message': str(e)
         })
 
+@app.route("/admin/api/upload-file", methods=["POST"])
+@require_admin_auth
+def admin_api_upload_file():
+    """Upload file (image/gif/video) and return URL"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': 'Không tìm thấy file'})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'Không có file được chọn'})
+        
+        # Check file size (5MB limit)
+        if len(file.read()) > 5 * 1024 * 1024:
+            return jsonify({'success': False, 'message': 'File quá lớn! Tối đa 5MB'})
+        
+        # Reset file pointer
+        file.seek(0)
+        
+        # Check file type
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4']
+        if file.content_type not in allowed_types:
+            return jsonify({'success': False, 'message': 'Định dạng file không được hỗ trợ'})
+        
+        # Create uploads directory
+        upload_dir = 'static/uploads'
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Generate unique filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        admin_email = session.get('admin_email', 'admin').replace('@', '_').replace('.', '_')
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        filename = f"{admin_email}_{timestamp}_{secrets.token_hex(4)}{file_ext}"
+        
+        # Save file
+        file_path = os.path.join(upload_dir, filename)
+        file.save(file_path)
+        
+        # Return URL (relative path for web access)
+        file_url = f"/static/uploads/{filename}"
+        
+        return jsonify({
+            'success': True,
+            'message': 'Upload thành công',
+            'url': file_url,
+            'filename': filename
+        })
+        
+    except Exception as e:
+        print(f"[UPLOAD ERROR] {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Lỗi upload: {str(e)}'
+        })
+
 @app.route("/admin/api/admins", methods=["GET"])
 @require_owner_auth
 def admin_api_get_admins():
