@@ -1,0 +1,328 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Thông Tin Cá Nhân - Admin Studio{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Thông Tin Cá Nhân</h1>
+
+<!-- Profile Section -->
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Hồ Sơ Quản Trị Viên</h2>
+    </div>
+    <form id="profileForm">
+        <div style="display: grid; gap: 24px;">
+            <!-- Avatar Upload -->
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-image"></i> Ảnh Đại Diện
+                </label>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div id="avatarPreview" style="
+                        width: 100px;
+                        height: 100px;
+                        border-radius: 50%;
+                        background: var(--glass-bg-light);
+                        border: 3px solid var(--border-color);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 40px;
+                        color: var(--text-secondary);
+                        overflow: hidden;
+                        box-shadow: 0 4px 12px var(--shadow-color);
+                    ">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <input type="text" class="form-control" id="avatarUrl" 
+                               placeholder="Nhập URL ảnh hoặc GIF..." 
+                               style="margin-bottom: 8px;">
+                        <small style="color: var(--text-secondary); display: block;">
+                            <i class="fas fa-info-circle"></i> Hỗ trợ định dạng: JPG, PNG, GIF, WebP
+                        </small>
+                        <div style="margin-top: 12px; display: flex; gap: 8px;">
+                            <button type="button" class="btn btn-secondary btn-sm ripple" onclick="previewAvatar()">
+                                <i class="fas fa-eye"></i> Xem Trước
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm ripple" onclick="clearAvatar()">
+                                <i class="fas fa-trash"></i> Xóa Ảnh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display Name -->
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-signature"></i> Tên Hiển Thị
+                </label>
+                <input type="text" class="form-control" id="displayName" 
+                       placeholder="Nhập tên hiển thị của bạn..." 
+                       value="{{ user.display_name or admin_email }}"
+                       maxlength="50">
+                <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
+                    Tên này sẽ hiển thị ở góc phải trên cùng thay vì email
+                </small>
+            </div>
+
+            <!-- Email (Read Only) -->
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-envelope"></i> Email Đăng Nhập
+                </label>
+                <div style="position: relative;">
+                    <input type="email" class="form-control" 
+                           value="{{ admin_email }}" 
+                           readonly 
+                           style="background: var(--glass-bg-light); cursor: not-allowed; opacity: 0.7; padding-right: 100px;">
+                    {% if is_owner %}
+                    <span class="admin-badge owner-badge" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%);">
+                        <i class="fas fa-crown"></i> OWNER
+                    </span>
+                    {% else %}
+                    <span class="admin-badge" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%);">
+                        <i class="fas fa-shield-halved"></i> ADMIN
+                    </span>
+                    {% endif %}
+                </div>
+                <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
+                    Email không thể thay đổi
+                </small>
+            </div>
+
+            <!-- Bio (Optional) -->
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-pencil-alt"></i> Tiểu Sử (Tùy Chọn)
+                </label>
+                <textarea class="form-control" id="bio" rows="4" 
+                          placeholder="Viết vài dòng về bản thân..."
+                          maxlength="200">{{ user.bio or '' }}</textarea>
+                <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
+                    Tối đa 200 ký tự
+                </small>
+            </div>
+
+            <!-- Save Button -->
+            <div style="display: flex; gap: 12px;">
+                <button type="submit" class="btn btn-primary ripple">
+                    <i class="fas fa-save"></i>
+                    Lưu Thay Đổi
+                </button>
+                <button type="button" class="btn btn-secondary ripple" onclick="resetForm()">
+                    <i class="fas fa-undo"></i>
+                    Đặt Lại
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Account Info -->
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Thông Tin Tài Khoản</h2>
+    </div>
+    <div class="section-content">
+        <div style="display: grid; gap: 16px;">
+            <div style="padding: 16px; background: var(--glass-bg-light); border-radius: 12px; border: 1px solid var(--border-color);">
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                    <i class="fas fa-calendar"></i> Ngày Tạo Tài Khoản
+                </div>
+                <div style="font-size: 15px; font-weight: 500;">
+                    {{ user.created_at or 'N/A' }}
+                </div>
+            </div>
+            <div style="padding: 16px; background: var(--glass-bg-light); border-radius: 12px; border: 1px solid var(--border-color);">
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                    <i class="fas fa-clock"></i> Đăng Nhập Gần Nhất
+                </div>
+                <div style="font-size: 15px; font-weight: 500;">
+                    {{ user.last_login or 'N/A' }}
+                </div>
+            </div>
+            <div style="padding: 16px; background: var(--glass-bg-light); border-radius: 12px; border: 1px solid var(--border-color);">
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                    <i class="fas fa-shield-halved"></i> Vai Trò
+                </div>
+                <div style="font-size: 15px; font-weight: 500;">
+                    {% if is_owner %}
+                    <span class="admin-badge owner-badge">
+                        <i class="fas fa-crown"></i> OWNER
+                    </span>
+                    {% else %}
+                    <span class="admin-badge">
+                        <i class="fas fa-shield-halved"></i> ADMIN
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load saved user settings
+    function loadUserSettings() {
+        const savedAvatar = localStorage.getItem('user-avatar');
+        const savedDisplayName = localStorage.getItem('user-display-name');
+        const savedBio = localStorage.getItem('user-bio');
+        
+        if (savedAvatar) {
+            document.getElementById('avatarUrl').value = savedAvatar;
+            previewAvatar();
+        }
+        
+        if (savedDisplayName) {
+            document.getElementById('displayName').value = savedDisplayName;
+        }
+        
+        if (savedBio) {
+            document.getElementById('bio').value = savedBio;
+        }
+    }
+
+    // Preview Avatar
+    function previewAvatar() {
+        const url = document.getElementById('avatarUrl').value.trim();
+        const preview = document.getElementById('avatarPreview');
+        
+        if (url) {
+            preview.innerHTML = `<img src="${url}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-exclamation-triangle\\'></i>'">`;
+        } else {
+            preview.innerHTML = '<i class="fas fa-user"></i>';
+        }
+    }
+
+    // Clear Avatar
+    function clearAvatar() {
+        document.getElementById('avatarUrl').value = '';
+        document.getElementById('avatarPreview').innerHTML = '<i class="fas fa-user"></i>';
+    }
+
+    // Reset Form
+    function resetForm() {
+        loadUserSettings();
+        showSuccessPopup('Đã đặt lại về giá trị đã lưu!');
+    }
+
+    // Form Submit
+    document.getElementById('profileForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const avatarUrl = document.getElementById('avatarUrl').value.trim();
+        const displayName = document.getElementById('displayName').value.trim();
+        const bio = document.getElementById('bio').value.trim();
+        
+        if (!displayName) {
+            showErrorPopup('Vui lòng nhập tên hiển thị!');
+            return;
+        }
+        
+        // Save to localStorage
+        localStorage.setItem('user-avatar', avatarUrl);
+        localStorage.setItem('user-display-name', displayName);
+        localStorage.setItem('user-bio', bio);
+        
+        // Update header display
+        updateHeaderDisplay();
+        
+        // Send to server
+        try {
+            const response = await fetch('/admin/api/user-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    avatar_url: avatarUrl,
+                    display_name: displayName,
+                    bio: bio
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showSuccessPopup('Đã lưu thông tin thành công!');
+            } else {
+                showErrorPopup(data.message || 'Có lỗi xảy ra!');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showErrorPopup('Không thể kết nối đến server!');
+        }
+    });
+
+    // Update Header Display
+    function updateHeaderDisplay() {
+        const avatarUrl = localStorage.getItem('user-avatar');
+        const displayName = localStorage.getItem('user-display-name');
+        
+        const avatarDisplay = document.getElementById('userAvatarDisplay');
+        const nameDisplay = document.getElementById('userDisplayName');
+        
+        if (avatarDisplay && avatarUrl) {
+            avatarDisplay.innerHTML = `<img src="${avatarUrl}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user\\'></i>'">`;
+        }
+        
+        if (nameDisplay && displayName) {
+            nameDisplay.textContent = displayName;
+        }
+    }
+
+    // Success Popup
+    function showSuccessPopup(message) {
+        const overlay = document.createElement('div');
+        overlay.className = 'popup-overlay';
+        overlay.innerHTML = `
+            <div class="popup-container" style="max-width: 400px;">
+                <div class="liquidGlass-effect"></div>
+                <div class="liquidGlass-tint"></div>
+                <div class="liquidGlass-shine"></div>
+                <div style="position: relative; z-index: 1; padding: 32px; text-align: center;">
+                    <div style="width: 64px; height: 64px; margin: 0 auto 20px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);">
+                        <i class="fas fa-check" style="font-size: 32px; color: #fff;"></i>
+                    </div>
+                    <h3 style="margin-bottom: 12px; font-size: 20px; color: var(--text-primary);">Thành Công!</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 24px;">${message}</p>
+                    <button class="btn btn-primary ripple" onclick="closePopup()" style="width: 100%;">
+                        <i class="fas fa-check"></i> OK
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
+    }
+
+    // Error Popup
+    function showErrorPopup(message) {
+        const overlay = document.createElement('div');
+        overlay.className = 'popup-overlay';
+        overlay.innerHTML = `
+            <div class="popup-container" style="max-width: 400px;">
+                <div class="liquidGlass-effect"></div>
+                <div class="liquidGlass-tint"></div>
+                <div class="liquidGlass-shine"></div>
+                <div style="position: relative; z-index: 1; padding: 32px; text-align: center;">
+                    <div style="width: 64px; height: 64px; margin: 0 auto 20px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);">
+                        <i class="fas fa-exclamation" style="font-size: 32px; color: #fff;"></i>
+                    </div>
+                    <h3 style="margin-bottom: 12px; font-size: 20px; color: var(--text-primary);">Lỗi!</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 24px;">${message}</p>
+                    <button class="btn btn-danger ripple" onclick="closePopup()" style="width: 100%;">
+                        <i class="fas fa-times"></i> Đóng
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
+    }
+
+    // Initialize
+    loadUserSettings();
+    updateHeaderDisplay();
+</script>
+{% endblock %}

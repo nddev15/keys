@@ -1,0 +1,310 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Quản Lý Đơn Hàng - Admin Studio{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Quản Lý Đơn Hàng</h1>
+
+<!-- Stats -->
+<div class="stats-grid" style="margin-bottom: 24px;">
+    <div class="stat-card">
+        <h3>Tổng Đơn</h3>
+        <div class="stat-value">{{ data.order_stats.total }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Đã Thanh Toán</h3>
+        <div class="stat-value" style="color: #2e7d32;">{{ data.order_stats.paid }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Đang Chờ</h3>
+        <div class="stat-value" style="color: #ef6c00;">{{ data.order_stats.pending }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Pending Quá 15p</h3>
+        <div class="stat-value" style="color: #c62828;">{{ data.order_stats.old_pending }}</div>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Danh Sách Đơn Hàng</h2>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" onclick="cleanupOldOrders()">
+                <i class="fas fa-broom"></i>
+                Dọn Dẹp
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="resetAllOrders()">
+                <i class="fas fa-trash-alt"></i>
+                Reset Tất Cả
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="showOrderSettings()">
+                <i class="fas fa-cog"></i>
+                Cài Đặt
+            </button>
+        </div>
+    </div>
+    
+    <div style="padding: 16px 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 12px; align-items: center;">
+        <label style="font-size: 14px; color: var(--text-secondary);">Lọc:</label>
+        <select id="orderStatusFilter" onchange="filterOrders()" class="form-control" style="width: auto;">
+            <option value="all">Tất cả</option>
+            <option value="paid">Đã thanh toán</option>
+            <option value="pending">Đang chờ</option>
+        </select>
+        
+        <button class="btn btn-secondary btn-sm" onclick="location.reload()">
+            <i class="fas fa-sync-alt"></i>
+            Reload
+        </button>
+    </div>
+    
+    <div class="table-container" style="max-height: 600px; overflow-y: auto;">
+        <table id="ordersTable">
+            <thead style="position: sticky; top: 0; background: white;">
+                <tr>
+                    <th>UID</th>
+                    <th>Code</th>
+                    <th>Email</th>
+                    <th>Key</th>
+                    <th>Promo</th>
+                    <th>Status</th>
+                    <th>Thời Gian</th>
+                    <th style="width: 120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in data.orders %}
+                <tr data-status="{{ order.status.lower() }}">
+                    <td><code>{{ order.uid }}</code></td>
+                    <td><code>{{ order.code }}</code></td>
+                    <td>{{ order.email or '-' }}</td>
+                    <td>
+                        {% if order.key %}
+                        <code style="font-size: 11px;">{{ order.key[:15] }}...</code>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ order.promo_code or '-' }}</td>
+                    <td>
+                        {% if order.status == 'Paid' %}
+                        <span class="badge badge-success">{{ order.status }}</span>
+                        {% else %}
+                        <span class="badge badge-warning">{{ order.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 12px;">{{ order.created_at }}</td>
+                    <td>
+                        <div style="display: flex; gap: 4px;">
+                            {% if order.status == 'Pending' %}
+                            <button class="btn btn-primary btn-sm" onclick="approveOrder('{{ order.uid }}')" title="Duyệt">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            {% endif %}
+                            <button class="btn btn-danger btn-sm" onclick="deleteOrder('{{ order.uid }}')" title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function filterOrders() {
+        const filter = document.getElementById('orderStatusFilter').value;
+        const rows = document.querySelectorAll('#ordersTable tbody tr');
+        
+        rows.forEach(row => {
+            const status = row.getAttribute('data-status');
+            if (filter === 'all' || status === filter) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    async function approveOrder(uid) {
+        showConfirmDialog(
+            'Duyệt Đơn Hàng',
+            `Bạn có chắc muốn duyệt order <code style="font-family: monospace; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">${uid}</code>?`,
+            async () => {
+                try {
+                    const response = await fetch(`/admin/api/orders/${uid}/approve`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccessNotification('Đã duyệt order thành công!');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showErrorNotification('Lỗi: ' + (data.message || 'Không thể duyệt order'));
+                    }
+                } catch (error) {
+                    showErrorNotification('Lỗi kết nối: ' + error.message);
+                }
+            }
+        );
+    }
+
+    async function deleteOrder(uid) {
+        showConfirmDialog(
+            'Xóa Đơn Hàng',
+            `Bạn có chắc muốn xóa order <code style="font-family: monospace; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">${uid}</code>?<br><br><span style="color: #ef4444;">Hành động này không thể hoàn tác!</span>`,
+            async () => {
+                try {
+                    const response = await fetch(`/admin/api/orders/${uid}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccessNotification('Đã xóa order thành công!');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showErrorNotification('Lỗi: ' + (data.message || 'Không thể xóa order'));
+                    }
+                } catch (error) {
+                    showErrorNotification('Lỗi kết nối: ' + error.message);
+                }
+            }
+        );
+    }
+
+    async function resetAllOrders() {
+        showConfirmDialog(
+            '⚠️ XÓA TẤT CẢ ORDERS',
+            'Hành động này sẽ xóa toàn bộ lịch sử đơn hàng và <span style="color: #ef4444; font-weight: bold;">KHÔNG THỂ HOÀN TÁC</span>!<br><br>Bạn có chắc chắn muốn tiếp tục?',
+            () => {
+                showConfirmDialog(
+                    'XÁC NHẬN LẦN CUỐI',
+                    'Bạn <span style="color: #ef4444; font-weight: bold;">THỰC SỰ</span> muốn xóa tất cả orders?',
+                    async () => {
+                        try {
+                            const response = await fetch('/admin/api/orders/reset', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                showSuccessNotification('Đã xóa tất cả orders thành công!');
+                                setTimeout(() => location.reload(), 1500);
+                            } else {
+                                showErrorNotification('Lỗi: ' + (data.message || 'Không thể reset orders'));
+                            }
+                        } catch (error) {
+                            showErrorNotification('Lỗi kết nối: ' + error.message);
+                        }
+                    }
+                );
+            }
+        );
+    }
+
+    async function cleanupOldOrders() {
+        showInputDialog(
+            'Dọn Dẹp Orders Cũ',
+            'Nhập số phút (orders pending quá thời gian này sẽ bị xóa)',
+            async (minutes) => {
+                if (!minutes || isNaN(minutes)) {
+                    showErrorNotification('Vui lòng nhập số phút hợp lệ!');
+                    return;
+                }
+
+                showConfirmDialog(
+                    'Xác Nhận Dọn Dẹp',
+                    `Xóa tất cả orders pending quá <strong>${minutes} phút</strong>?`,
+                    async () => {
+                        try {
+                            const response = await fetch('/admin/api/orders/cleanup', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ minutes: parseInt(minutes) })
+                            });
+
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                showSuccessNotification(data.message);
+                                setTimeout(() => location.reload(), 1500);
+                            } else {
+                                showErrorNotification('Lỗi: ' + (data.message || 'Không thể cleanup orders'));
+                            }
+                        } catch (error) {
+                            showErrorNotification('Lỗi kết nối: ' + error.message);
+                        }
+                    }
+                );
+            }
+        );
+    }
+
+    function showOrderSettings() {
+        fetch('/admin/api/settings')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const settings = data.settings;
+                    const enabled = settings.auto_cleanup_enabled ? 'BẬT' : 'TẮT';
+                    const minutes = settings.auto_cleanup_minutes || 15;
+                    const interval = (settings.auto_cleanup_interval || 300) / 60;
+                    
+                    const newEnabled = confirm(
+                        `⚙️ CÀI ĐẶT TỰ ĐỘNG XÓA ORDER\n\n` +
+                        `Trạng thái hiện tại: ${enabled}\n` +
+                        `Xóa orders pending sau: ${minutes} phút\n` +
+                        `Kiểm tra mỗi: ${interval} phút\n\n` +
+                        `Nhấn OK để BẬT, Cancel để TẮT tính năng tự động xóa`
+                    );
+                    
+                    let newMinutes = minutes;
+                    let newInterval = interval;
+                    
+                    if (newEnabled) {
+                        const inputMinutes = prompt('Xóa orders pending sau bao nhiêu phút?', minutes);
+                        if (inputMinutes && !isNaN(inputMinutes)) {
+                            newMinutes = parseInt(inputMinutes);
+                        }
+                        
+                        const inputInterval = prompt('Kiểm tra mỗi bao nhiêu phút?', interval);
+                        if (inputInterval && !isNaN(inputInterval)) {
+                            newInterval = parseInt(inputInterval);
+                        }
+                    }
+                    
+                    // Save settings
+                    fetch('/admin/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            auto_cleanup_enabled: newEnabled,
+                            auto_cleanup_minutes: newMinutes,
+                            auto_cleanup_interval: newInterval * 60
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.success) {
+                            alert('✅ Đã cập nhật cài đặt thành công!\n\nLưu ý: Cần restart server để áp dụng thay đổi interval.');
+                        } else {
+                            alert('❌ Lỗi: ' + result.message);
+                        }
+                    });
+                }
+            });
+    }
+</script>
+{% endblock %}

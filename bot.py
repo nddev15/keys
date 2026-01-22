@@ -227,6 +227,7 @@ TG_CHAT_ID = "7454505306"
 COUPON_FILE = os.path.join("data", "coupon", "coupons.json")
 ADMIN_FILE = os.path.join("data", "admin", "admin.json")
 USERS_FILE = os.path.join("data", "users", "users.json")
+ORDERS_DB = "orders.db"
 
 # Initialize bot
 bot = TeleBot(TG_BOT_TOKEN)
@@ -353,6 +354,106 @@ def add_user_id(user_id):
         users.append(user_str)
         return save_users(users)
     return True  # Already exists
+
+# =================== Orders Functions ===================
+def load_orders_from_db(status=None, limit=50):
+    """Load orders from SQLite database"""
+    try:
+        import sqlite3
+        from datetime import datetime
+        
+        conn = sqlite3.connect(ORDERS_DB)
+        cursor = conn.cursor()
+        
+        if status == "paid":
+            cursor.execute("""
+                SELECT uid, email, key, verification_code, promo_code, paid, created_at
+                FROM orders 
+                WHERE paid = 1
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (limit,))
+        elif status == "pending":
+            cursor.execute("""
+                SELECT uid, email, key, verification_code, promo_code, paid, created_at
+                FROM orders 
+                WHERE paid = 0
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (limit,))
+        else:
+            cursor.execute("""
+                SELECT uid, email, key, verification_code, promo_code, paid, created_at
+                FROM orders 
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        orders = []
+        for row in rows:
+            orders.append({
+                'uid': row[0],
+                'email': row[1] or 'N/A',
+                'key': row[2] or 'N/A',
+                'verification_code': row[3],
+                'promo_code': row[4] or 'N/A',
+                'paid': row[5],
+                'created_at': row[6]
+            })
+        
+        return orders
+    except Exception as e:
+        print(f"[ORDERS ERROR] {e}")
+        return []
+
+def get_order_stats_from_db():
+    """Get order statistics from database"""
+    try:
+        import sqlite3
+        from datetime import datetime, timedelta
+        
+        conn = sqlite3.connect(ORDERS_DB)
+        cursor = conn.cursor()
+        
+        # Total orders
+        cursor.execute("SELECT COUNT(*) FROM orders")
+        total = cursor.fetchone()[0]
+        
+        # Paid orders
+        cursor.execute("SELECT COUNT(*) FROM orders WHERE paid = 1")
+        paid = cursor.fetchone()[0]
+        
+        # Pending orders
+        cursor.execute("SELECT COUNT(*) FROM orders WHERE paid = 0")
+        pending = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return {
+            'total': total,
+            'paid': paid,
+            'pending': pending
+        }
+    except Exception as e:
+        print(f"[ORDER STATS ERROR] {e}")
+        return {'total': 0, 'paid': 0, 'pending': 0}
+
+def mark_order_paid_db(uid):
+    """Mark an order as paid"""
+    try:
+        import sqlite3
+        conn = sqlite3.connect(ORDERS_DB)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE orders SET paid=1 WHERE uid=?", (uid,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"[ORDERS ERROR] {e}")
+        return False
 
 # =================== Coupon Functions ===================
 def load_coupons():
@@ -519,6 +620,8 @@ def save_shortened_url(service, original_url, shortened_url):
         file_path = os.path.join("data", "shortenurl", "tinyurl.json")
     elif service == "isgd":
         file_path = os.path.join("data", "shortenurl", "isgd.json")
+    elif service == "vgd":
+        file_path = os.path.join("data", "shortenurl", "vgd.json")
     else:
         return False
     
@@ -568,6 +671,8 @@ def load_shortened_urls(service):
         file_path = os.path.join("data", "shortenurl", "tinyurl.json")
     elif service == "isgd":
         file_path = os.path.join("data", "shortenurl", "isgd.json")
+    elif service == "vgd":
+        file_path = os.path.join("data", "shortenurl", "vgd.json")
     else:
         return {}
     
@@ -580,25 +685,6 @@ def load_shortened_urls(service):
     except Exception as e:
         print(f"[LOAD URL ERROR] Failed to load shortened URLs: {e}")
         return {}
-
-def check_alias_exists(alias):
-    """Check if alias already exists in tinyurl.json"""
-    try:
-        file_path = os.path.join("data", "shortenurl", "tinyurl.json")
-        if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict):
-                    for entry in data.values():
-                        if isinstance(entry, dict):
-                            shortened_url = entry.get("shortened_url", "")
-                            # Check if alias is in the shortened URL
-                            if f"/{alias}" in shortened_url or shortened_url.endswith(alias):
-                                return True
-        return False
-    except Exception as e:
-        print(f"[CHECK ALIAS ERROR] {e}")
-        return False
 
 # =================== Key Functions ===================
 def get_all_unsold_keys():
@@ -761,7 +847,10 @@ def start(message):
         types.InlineKeyboardButton("🔗 Rút gọn Link", callback_data="category_links")
     )
     markup.add(
-        types.InlineKeyboardButton("👥 Quản lý Admin", callback_data="category_admin"),
+        types.InlineKeyboardButton("� Quản lý Orders", callback_data="category_orders"),
+        types.InlineKeyboardButton("👥 Quản lý Admin", callback_data="category_admin")
+    )
+    markup.add(
         types.InlineKeyboardButton("🤖 Quản lý Bot", callback_data="category_bot")
     )
     markup.add(
@@ -874,6 +963,34 @@ def handle_category_callback(call):
             parse_mode="HTML"
         )
     
+    elif call.data == "category_orders":
+        # Show Orders Management submenu
+        stats = get_order_stats_from_db()
+        
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton(f"📋 Tất cả ({stats['total']})", callback_data="orders_all"),
+            types.InlineKeyboardButton(f"✅ Đã thanh toán ({stats['paid']})", callback_data="orders_paid")
+        )
+        markup.add(
+            types.InlineKeyboardButton(f"⏳ Chờ thanh toán ({stats['pending']})", callback_data="orders_pending"),
+            types.InlineKeyboardButton("🔍 Tìm Order", callback_data="orders_search")
+        )
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="back_to_main"))
+        
+        bot.edit_message_text(
+            "📦 <b>Quản lý Orders</b>\n\n"
+            f"📊 Thống kê:\n"
+            f"• Tổng: {stats['total']}\n"
+            f"• Đã thanh toán: {stats['paid']}\n"
+            f"• Chờ thanh toán: {stats['pending']}\n\n"
+            "Chọn chức năng:",
+            chat_id,
+            call.message.id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    
     elif call.data == "category_bot":
         # Show Bot Management submenu
         markup = types.InlineKeyboardMarkup(row_width=2)
@@ -908,10 +1025,14 @@ def handle_back_to_main(call):
         types.InlineKeyboardButton("🔗 Rút gọn Link", callback_data="category_links")
     )
     markup.add(
-        types.InlineKeyboardButton("👥 Quản lý Admin", callback_data="category_admin"),
+        types.InlineKeyboardButton("� Quản lý Orders", callback_data="category_orders"),
+        types.InlineKeyboardButton("👥 Quản lý Admin", callback_data="category_admin")
+    )
+    markup.add(
         types.InlineKeyboardButton("🤖 Quản lý Bot", callback_data="category_bot")
     )
     markup.add(
+        types.InlineKeyboardButton("📊 Dashboard", callback_data="show_dashboard"),
         types.InlineKeyboardButton("🔄 Đồng bộ dữ liệu", callback_data="menu_syncdata")
     )
     
@@ -990,6 +1111,179 @@ def handle_viewkey_callback(call):
         bot.edit_message_text(msg_text, chat_id, call.message.id, reply_markup=markup, parse_mode="HTML")
     
     bot.answer_callback_query(call.id)
+
+# =================== ORDERS MANAGEMENT ===================
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("orders_"))
+def handle_orders_callback(call):
+    """Handle orders callbacks"""
+    chat_id = call.message.chat.id
+    
+    if call.data == "orders_all":
+        orders = load_orders_from_db(status=None, limit=20)
+        display_orders_list(chat_id, call.message.id, orders, "Tất cả Orders", "all")
+    
+    elif call.data == "orders_paid":
+        orders = load_orders_from_db(status="paid", limit=20)
+        display_orders_list(chat_id, call.message.id, orders, "Orders đã thanh toán", "paid")
+    
+    elif call.data == "orders_pending":
+        orders = load_orders_from_db(status="pending", limit=20)
+        display_orders_list(chat_id, call.message.id, orders, "Orders chờ thanh toán", "pending")
+    
+    elif call.data == "orders_search":
+        user_states[chat_id] = {"step": "waiting_order_uid"}
+        bot.edit_message_text(
+            "🔍 <b>Tìm kiếm Order</b>\n\n"
+            "📝 Nhập UID của order cần tìm:\n\n"
+            "❌ Gửi /huy để hủy",
+            chat_id,
+            call.message.id,
+            parse_mode="HTML"
+        )
+    
+    bot.answer_callback_query(call.id)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("orderdetail_"))
+def handle_order_detail_callback(call):
+    """Show order details"""
+    chat_id = call.message.chat.id
+    uid = call.data.replace("orderdetail_", "")
+    
+    orders = load_orders_from_db()
+    order = next((o for o in orders if o['uid'] == uid), None)
+    
+    if not order:
+        bot.answer_callback_query(call.id, "❌ Order không tồn tại!")
+        return
+    
+    status_emoji = "✅" if order['paid'] else "⏳"
+    status_text = "Đã thanh toán" if order['paid'] else "Chờ thanh toán"
+    
+    msg = (
+        f"📦 <b>Chi tiết Order</b>\n\n"
+        f"🆔 <b>UID:</b> <code>{order['uid']}</code>\n"
+        f"📧 <b>Email:</b> {order['email']}\n"
+        f"🔑 <b>Key:</b> <code>{order['key']}</code>\n"
+        f"🎟️ <b>Mã giảm giá:</b> {order['promo_code']}\n"
+        f"{status_emoji} <b>Trạng thái:</b> {status_text}\n"
+        f"📅 <b>Tạo lúc:</b> {order['created_at']}\n"
+    )
+    
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    if not order['paid']:
+        markup.add(
+            types.InlineKeyboardButton("✅ Duyệt", callback_data=f"approveorder_{uid}")
+        )
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="category_orders"))
+    
+    bot.edit_message_text(msg, chat_id, call.message.id, reply_markup=markup, parse_mode="HTML")
+    bot.answer_callback_query(call.id)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("approveorder_"))
+def handle_approve_order_callback(call):
+    """Approve an order"""
+    chat_id = call.message.chat.id
+    uid = call.data.replace("approveorder_", "")
+    
+    if mark_order_paid_db(uid):
+        bot.edit_message_text(
+            f"✅ <b>Đã duyệt order</b>\n\n🆔 UID: <code>{uid}</code>",
+            chat_id,
+            call.message.id,
+            parse_mode="HTML"
+        )
+        
+        # Notify admin
+        send_telegram(f"✅ <b>Order được duyệt</b>\nUID: {uid}")
+    else:
+        bot.answer_callback_query(call.id, "❌ Lỗi khi duyệt order!")
+    
+    bot.answer_callback_query(call.id)
+
+def display_orders_list(chat_id, message_id, orders, title, filter_type):
+    """Display list of orders"""
+    if not orders:
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="category_orders"))
+        bot.edit_message_text(
+            f"📋 <b>{title}</b>\n\n❌ Không có order nào.",
+            chat_id,
+            message_id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+        return
+    
+    msg = f"📋 <b>{title}</b>\n\n"
+    
+    for i, order in enumerate(orders[:10], 1):
+        status_emoji = "✅" if order['paid'] else "⏳"
+        msg += (
+            f"{i}. {status_emoji} <code>{order['uid'][:8]}...</code>\n"
+            f"   📧 {order['email']}\n"
+            f"   📅 {order['created_at']}\n\n"
+        )
+    
+    if len(orders) > 10:
+        msg += f"... và {len(orders) - 10} orders khác\n\n"
+    
+    msg += f"📊 Tổng: {len(orders)} orders"
+    
+    # Create buttons for first 5 orders
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    for order in orders[:5]:
+        btn_text = f"📦 {order['uid'][:12]}... ({'✅' if order['paid'] else '⏳'})"
+        markup.add(types.InlineKeyboardButton(btn_text, callback_data=f"orderdetail_{order['uid']}"))
+    
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="category_orders"))
+    
+    bot.edit_message_text(msg, chat_id, message_id, reply_markup=markup, parse_mode="HTML")
+
+@bot.message_handler(func=lambda message: user_states.get(message.chat.id, {}).get("step") == "waiting_order_uid")
+def handle_order_search(message):
+    """Handle order search by UID"""
+    chat_id = message.chat.id
+    uid = message.text.strip()
+    
+    if uid == "/huy":
+        del user_states[chat_id]
+        bot.send_message(chat_id, "❌ Đã hủy tìm kiếm.")
+        return
+    
+    orders = load_orders_from_db()
+    order = next((o for o in orders if o['uid'] == uid), None)
+    
+    if not order:
+        bot.send_message(chat_id, f"❌ Không tìm thấy order với UID: <code>{uid}</code>", parse_mode="HTML")
+        return
+    
+    del user_states[chat_id]
+    
+    status_emoji = "✅" if order['paid'] else "⏳"
+    status_text = "Đã thanh toán" if order['paid'] else "Chờ thanh toán"
+    
+    msg = (
+        f"🔍 <b>Kết quả tìm kiếm</b>\n\n"
+        f"📦 <b>Chi tiết Order</b>\n\n"
+        f"🆔 <b>UID:</b> <code>{order['uid']}</code>\n"
+        f"📧 <b>Email:</b> {order['email']}\n"
+        f"🔑 <b>Key:</b> <code>{order['key']}</code>\n"
+        f"🎟️ <b>Mã giảm giá:</b> {order['promo_code']}\n"
+        f"{status_emoji} <b>Trạng thái:</b> {status_text}\n"
+        f"📅 <b>Tạo lúc:</b> {order['created_at']}\n"
+    )
+    
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    if not order['paid']:
+        markup.add(
+            types.InlineKeyboardButton("✅ Duyệt", callback_data=f"approveorder_{order['uid']}")
+        )
+    markup.add(types.InlineKeyboardButton("🔙 Quay lại", callback_data="category_orders"))
+    
+    bot.send_message(chat_id, msg, reply_markup=markup, parse_mode="HTML")
+
+# =================== KEY MANAGEMENT ===================
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("keypage_"))
 def handle_keypage_callback(call):
@@ -1620,7 +1914,8 @@ def handle_shorten_service_callback(call):
     
     service_map = {
         "shorten_tinyurl": "tinyurl",
-        "shorten_isgd": "isgd"
+        "shorten_isgd": "isgd",
+        "shorten_vgd": "vgd"
     }
     
     service = service_map.get(call.data)
@@ -1629,34 +1924,7 @@ def handle_shorten_service_callback(call):
         return
     
     user_states[chat_id] = {"step": "waiting_link_to_shorten", "service": service}
-    
-    if service == "tinyurl":
-        # Ask if user wants custom alias for tinyurl
-        markup = types.InlineKeyboardMarkup()
-        markup.add(
-            types.InlineKeyboardButton("✅ Có", callback_data="alias_yes"),
-            types.InlineKeyboardButton("❌ Không", callback_data="alias_no")
-        )
-        bot.edit_message_text("🔗 Bạn có muốn tùy chọn alias cho TinyURL không?", chat_id, call.message.id, reply_markup=markup)
-        user_states[chat_id]["step"] = "waiting_alias_choice"
-    else:
-        bot.edit_message_text("🔗 Nhập link cần rút gọn:", chat_id, call.message.id)
-    
-    bot.answer_callback_query(call.id)
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("alias_"))
-def handle_alias_choice_callback(call):
-    """Handle alias choice"""
-    chat_id = call.message.chat.id
-    
-    if call.data == "alias_yes":
-        user_states[chat_id]["step"] = "waiting_link_to_shorten"
-        user_states[chat_id]["use_alias"] = True
-        bot.edit_message_text("🔗 Nhập link cần rút gọn:", chat_id, call.message.id)
-    else:
-        user_states[chat_id]["step"] = "waiting_link_to_shorten"
-        user_states[chat_id]["use_alias"] = False
-        bot.edit_message_text("🔗 Nhập link cần rút gọn:", chat_id, call.message.id)
+    bot.edit_message_text("🔗 Nhập link cần rút gọn:", chat_id, call.message.id)
     
     bot.answer_callback_query(call.id)
 
@@ -1670,7 +1938,8 @@ def rut_gon_link(message):
         types.InlineKeyboardButton("🔗 TinyURL", callback_data="shorten_tinyurl"),
         types.InlineKeyboardButton("🔗 is.gd", callback_data="shorten_isgd")
     )
-    markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_links"))
+    markup.add(types.InlineKeyboardButton("� v.gd", callback_data="shorten_vgd"))
+    markup.add(types.InlineKeyboardButton("�🔙 Quay lại danh mục", callback_data="category_links"))
     bot.send_message(chat_id, "🔗 <b>Chọn dịch vụ rút gọn link:</b>", reply_markup=markup, parse_mode="HTML")
     user_states[chat_id] = {"step": "waiting_service_choice"}
 
@@ -1691,37 +1960,47 @@ def process_shorten_link(message):
     
     try:
         shortened_url = ""
-        alias = None
         
         if service == "tinyurl":
-            if use_alias:
-                # Ask for alias
-                user_states[chat_id]["step"] = "waiting_tinyurl_alias"
-                user_states[chat_id]["original_url"] = url
-                bot.send_message(chat_id, "✏️ Nhập alias mong muốn (ví dụ: mylink. Bỏ trống để tự động):", reply_markup=types.ReplyKeyboardRemove())
-                return
-            else:
-                # Use tinyurl API without alias
-                api_url = f"https://tinyurl.com/api-create.php?url={url}"
-                response = requests.get(api_url, timeout=10)
-                if response.status_code == 200:
-                    result = response.text.strip()
-                    # Check if response contains error
-                    if "error" not in result.lower() and result.startswith("https://"):
-                        shortened_url = result
-                    else:
-                        bot.send_message(chat_id, "❌ Lỗi rút gọn link! Vui lòng thử lại.")
-                        if chat_id in user_states:
-                            del user_states[chat_id]
-                        return
+            # Use tinyurl API without alias
+            api_url = f"https://tinyurl.com/api-create.php?url={url}"
+            response = requests.get(api_url, timeout=10)
+            if response.status_code == 200:
+                result = response.text.strip()
+                # Check if response contains error
+                if "error" not in result.lower() and result.startswith("https://"):
+                    shortened_url = result
                 else:
                     bot.send_message(chat_id, "❌ Lỗi rút gọn link! Vui lòng thử lại.")
                     if chat_id in user_states:
                         del user_states[chat_id]
                     return
+            else:
+                bot.send_message(chat_id, "❌ Lỗi rút gọn link! Vui lòng thử lại.")
+                if chat_id in user_states:
+                    del user_states[chat_id]
+                return
         elif service == "isgd":
             # Use is.gd API
             api_url = f"https://is.gd/create.php?format=json&url={url}"
+            response = requests.get(api_url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                if "shorturl" in data:
+                    shortened_url = data["shorturl"]
+                else:
+                    bot.send_message(chat_id, f"❌ Lỗi: {data.get('error', 'Không thể rút gọn link')}")
+                    if chat_id in user_states:
+                        del user_states[chat_id]
+                    return
+            else:
+                bot.send_message(chat_id, "❌ Lỗi rút gọn link! Vui lòng thử lại.")
+                if chat_id in user_states:
+                    del user_states[chat_id]
+                return
+        elif service == "vgd":
+            # Use v.gd API
+            api_url = f"https://v.gd/create.php?format=json&url={url}"
             response = requests.get(api_url, timeout=10)
             if response.status_code == 200:
                 data = response.json()
@@ -1763,88 +2042,6 @@ def process_shorten_link(message):
         if chat_id in user_states:
             del user_states[chat_id]
 
-@bot.message_handler(func=lambda message: user_states.get(message.chat.id, {}).get("step") == "waiting_tinyurl_alias")
-def process_tinyurl_alias(message):
-    """Process TinyURL alias input"""
-    chat_id = message.chat.id
-    alias = message.text.strip()
-    url = user_states.get(chat_id, {}).get("original_url")
-    
-    if not url:
-        bot.send_message(chat_id, "❌ Lỗi! Không tìm thấy link gốc.", reply_markup=types.ReplyKeyboardRemove())
-        if chat_id in user_states:
-            del user_states[chat_id]
-        return
-    
-    try:
-        shortened_url = ""
-        
-        if alias:
-            # Check if alias already exists
-            if check_alias_exists(alias):
-                bot.send_message(
-                    chat_id,
-                    f"❌ Alias '{alias}' đã được sử dụng!\n\nVui lòng nhập alias khác hoặc để trống để tạo link tự động:"
-                )
-                user_states[chat_id]["step"] = "waiting_tinyurl_alias"
-                return
-            
-            # Try with custom alias
-            api_url = f"https://tinyurl.com/api-create.php?url={url}&alias={alias}"
-            response = requests.get(api_url, timeout=10)
-            if response.status_code == 200:
-                result = response.text.strip()
-                # Check if it's an error or success
-                if "error" not in result.lower():
-                    shortened_url = result
-                else:
-                    bot.send_message(
-                        chat_id,
-                        f"❌ Alias '{alias}' không thể sử dụng (đã tồn tại trên TinyURL)!\n\nVui lòng nhập alias khác hoặc để trống để tạo link tự động:"
-                    )
-                    user_states[chat_id]["step"] = "waiting_tinyurl_alias"
-                    return
-            else:
-                bot.send_message(chat_id, "❌ Lỗi rút gọn link! Vui lòng thử lại.")
-                if chat_id in user_states:
-                    del user_states[chat_id]
-                return
-        else:
-            # No alias, create without one
-            api_url = f"https://tinyurl.com/api-create.php?url={url}"
-            response = requests.get(api_url, timeout=10)
-            if response.status_code == 200:
-                shortened_url = response.text.strip()
-            else:
-                bot.send_message(chat_id, "❌ Lỗi rút gọn link! Vui lòng thử lại.")
-                if chat_id in user_states:
-                    del user_states[chat_id]
-                return
-        
-        if shortened_url:
-            # Save to corresponding JSON file
-            save_shortened_url("tinyurl", url, shortened_url)
-            
-            alias_info = f"<b>Alias:</b> {alias}\n" if alias else "<b>Alias:</b> Tự động\n"
-            bot.send_message(
-                chat_id,
-                f"✅ <b>Rút gọn thành công!</b>\n\n"
-                f"<b>Dịch vụ:</b> TINYURL\n\n"
-                f"{alias_info}\n"
-                f"<b>Link gốc:</b>\n{url}\n\n"
-                f"<b>Link rút gọn:</b>\n<code>{shortened_url}</code>\n\n"
-                f"Bấm vào link rút gọn để sao chép!",
-                parse_mode="HTML",
-                reply_markup=types.ReplyKeyboardRemove()
-            )
-            if chat_id in user_states:
-                del user_states[chat_id]
-    except Exception as e:
-        print(f"[TINYURL ALIAS ERROR] {e}")
-        bot.send_message(chat_id, f"❌ Lỗi: {str(e)}", reply_markup=types.ReplyKeyboardRemove())
-        if chat_id in user_states:
-            del user_states[chat_id]
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith("showurl_"))
 def handle_show_url_callback(call):
     """Display shortened URLs for selected service"""
@@ -1852,7 +2049,8 @@ def handle_show_url_callback(call):
     
     service_map = {
         "showurl_tinyurl": "tinyurl",
-        "showurl_isgd": "isgd"
+        "showurl_isgd": "isgd",
+        "showurl_vgd": "vgd"
     }
     
     service = service_map.get(call.data)
@@ -1896,6 +2094,7 @@ def show_shortened_urls(message):
         types.InlineKeyboardButton("📌 TinyURL", callback_data="showurl_tinyurl"),
         types.InlineKeyboardButton("📌 is.gd", callback_data="showurl_isgd")
     )
+    markup.add(types.InlineKeyboardButton("📌 v.gd", callback_data="showurl_vgd"))
     markup.add(types.InlineKeyboardButton("🔙 Quay lại danh mục", callback_data="category_links"))
     
     bot.send_message(chat_id, "🔗 <b>Chọn dịch vụ để xem link rút gọn:</b>", reply_markup=markup, parse_mode="HTML")
@@ -2605,19 +2804,28 @@ def show_dashboard(call):
     
     # Get system statistics
     try:
-        from app import load_coupons, load_prices, count_keys, get_total_orders
+        # Get order stats
+        order_stats = get_order_stats_from_db()
+        
+        # Get coupon count
+        coupons = load_coupons()
+        
+        # Get user count
+        users = load_users()
+        
+        # Get admin count
+        admins = load_admins()
         
         dashboard_text = "📊 <b>SYSTEM DASHBOARD</b>\n\n"
         
         # System Stats
         dashboard_text += "📈 <b>THỐNG KÊ HỆ THỐNG:</b>\n"
-        dashboard_text += f"• Tổng Keys: {sum(count_keys(t) for t in ['1d', '7d', '30d', '90d'])}\n"
-        dashboard_text += f"• Keys 1D: {count_keys('1d')}\n"
-        dashboard_text += f"• Keys 7D: {count_keys('7d')}\n" 
-        dashboard_text += f"• Keys 30D: {count_keys('30d')}\n"
-        dashboard_text += f"• Keys 90D: {count_keys('90d')}\n"
-        dashboard_text += f"• Tổng Coupons: {len(load_coupons())}\n"
-        dashboard_text += f"• Tổng Orders: {get_total_orders()}\n\n"
+        dashboard_text += f"• Tổng Orders: {order_stats['total']}\n"
+        dashboard_text += f"  └ Đã thanh toán: {order_stats['paid']}\n"
+        dashboard_text += f"  └ Chờ thanh toán: {order_stats['pending']}\n"
+        dashboard_text += f"• Tổng Coupons: {len(coupons)}\n"
+        dashboard_text += f"• Tổng Users Bot: {len(users)}\n"
+        dashboard_text += f"• Tổng Admins: {len(admins)}\n\n"
         
         # Web Routes
         dashboard_text += "🌐 <b>WEB ROUTES:</b>\n"
@@ -2627,18 +2835,11 @@ def show_dashboard(call):
         dashboard_text += "• https://muakey.cloud/admin/login - Admin login\n"
         dashboard_text += "• https://muakey.cloud/admin/dashboard - Admin panel\n\n"
         
-        # API Routes
-        dashboard_text += "🔗 <b>API ENDPOINTS:</b>\n"
-        dashboard_text += "• <code>/api/mbbank/status</code> - API status\n"
-        dashboard_text += "• <code>/admin/api/keys/*</code> - Key management\n"
-        dashboard_text += "• <code>/admin/api/coupons/*</code> - Coupon CRUD\n"
-        dashboard_text += "• <code>/admin/api/prices</code> - Price management\n"
-        dashboard_text += "• <code>/admin/api/stats</code> - Dashboard stats\n\n"
-        
         # Bot Functions
         dashboard_text += "🤖 <b>BOT FUNCTIONS:</b>\n"
         dashboard_text += "• Key Management (CRUD)\n"
         dashboard_text += "• Coupon Management (CRUD)\n"
+        dashboard_text += "• Orders Management (View/Approve)\n"
         dashboard_text += "• Price Management\n"
         dashboard_text += "• URL Shortening\n"
         dashboard_text += "• Admin Management\n"
@@ -2647,19 +2848,19 @@ def show_dashboard(call):
         
         # Data Files
         dashboard_text += "💾 <b>DATA STRUCTURE:</b>\n"
-        dashboard_text += "• <code>/data/keys/</code> - Key storage\n"
+        dashboard_text += "• <code>orders.db</code> - SQLite orders database\n"
         dashboard_text += "• <code>/data/coupon/</code> - Coupon data\n"
         dashboard_text += "• <code>/data/prices/</code> - Pricing config\n"
+        dashboard_text += "• <code>/data/settings/</code> - App settings\n"
         dashboard_text += "• <code>/data/dashboard/</code> - Admin auth\n"
         dashboard_text += "• <code>/data/users/</code> - User management\n"
-        dashboard_text += "• <code>/data/links/</code> - Download links\n"
         dashboard_text += "• <code>/data/shortenurl/</code> - URL shortening\n\n"
         
         # Environment
         dashboard_text += "⚙️ <b>ENVIRONMENT:</b>\n"
         dashboard_text += f"• GitHub Integration: {'✅' if os.environ.get('GITHUB_TOKEN') else '❌'}\n"
         dashboard_text += f"• SendGrid Email: {'✅' if os.environ.get('SENDGRID_API_KEY') else '❌'}\n"
-        dashboard_text += f"• Telegram Bot: {'✅' if os.environ.get('TELEGRAM_BOT_TOKEN') else '❌'}\n"
+        dashboard_text += f"• Telegram Bot: {'✅' if os.environ.get('TG_BOT_TOKEN') else '❌'}\n"
         
     except Exception as e:
         dashboard_text = f"❌ <b>Lỗi tải dashboard:</b>\n<code>{str(e)}</code>"
@@ -2687,7 +2888,10 @@ def back_to_start(call):
         types.InlineKeyboardButton("🔗 Rút gọn Link", callback_data="category_links")
     )
     markup.add(
-        types.InlineKeyboardButton("👥 Quản lý Admin", callback_data="category_admin"),
+        types.InlineKeyboardButton("� Quản lý Orders", callback_data="category_orders"),
+        types.InlineKeyboardButton("👥 Quản lý Admin", callback_data="category_admin")
+    )
+    markup.add(
         types.InlineKeyboardButton("🤖 Quản lý Bot", callback_data="category_bot")
     )
     markup.add(

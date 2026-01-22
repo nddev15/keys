@@ -25,8 +25,8 @@ class GitHubDataManager:
     
     def __init__(self):
         self.token = os.environ.get('GITHUB_TOKEN', '')
-        self.owner = os.environ.get('GITHUB_OWNER', '')
-        self.repo = os.environ.get('GITHUB_REPO', '')
+        self.owner = os.environ.get('GITHUB_OWNER', 'abcxyznd')
+        self.repo = os.environ.get('GITHUB_REPO', 'keys')
         self.api_base = 'https://api.github.com'
         self.use_github = bool(self.token and self.owner and self.repo)
         
@@ -283,7 +283,7 @@ DB_FILE = "orders.db"
 AUTH_FILE = "data/dashboard/auth.json"
 
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
-FROM_EMAIL = os.environ.get("FROM_EMAIL", "")
+FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@muakey.cloud")
 
 MB_API_URL = "https://thueapibank.vn/historyapimbbankv2/07bf677194ae4972714f01a3abf58c5f"
 
@@ -347,6 +347,105 @@ def get_file_lock(file_path):
         if file_path not in file_locks:
             file_locks[file_path] = Lock()
         return file_locks[file_path]
+
+# =================== Coupon Management (Local) ===================
+COUPON_FILE = "data/coupon/coupons.json"
+
+def load_coupons():
+    """Load coupons from JSON file"""
+    try:
+        os.makedirs(os.path.dirname(COUPON_FILE), exist_ok=True)
+        if not os.path.exists(COUPON_FILE):
+            with open(COUPON_FILE, 'w', encoding='utf-8') as f:
+                json.dump({}, f)
+            return {}
+        
+        with open(COUPON_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[COUPON ERROR] Failed to load coupons: {e}")
+        return {}
+
+def save_coupons(coupons):
+    """Save coupons to JSON file"""
+    try:
+        os.makedirs(os.path.dirname(COUPON_FILE), exist_ok=True)
+        with open(COUPON_FILE, 'w', encoding='utf-8') as f:
+            json.dump(coupons, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"[COUPON ERROR] Failed to save coupons: {e}")
+        return False
+
+def get_coupon(code):
+    """Get coupon details"""
+    coupons = load_coupons()
+    return coupons.get(code.upper())
+
+def is_coupon_valid(code, period):
+    """Check if coupon is valid for the given period"""
+    coupon = get_coupon(code)
+    if not coupon:
+        return False, "Mã giảm giá không tồn tại"
+    
+    # Check if coupon has expired
+    if 'expires_at' in coupon:
+        try:
+            expires_at = datetime.strptime(coupon['expires_at'], '%Y-%m-%d %H:%M:%S')
+            if datetime.now() > expires_at:
+                return False, "Mã giảm giá đã hết hạn"
+        except:
+            pass
+    
+    # Check if coupon has uses left
+    if coupon.get('type') == 'limited':
+        if coupon.get('uses_left', 0) <= 0:
+            return False, "Mã giảm giá đã hết lượt sử dụng"
+    
+    # Check if coupon is applicable to this period type
+    if 'types' in coupon and coupon['types']:
+        base_period = period.replace("_v2", "")
+        if base_period not in coupon['types']:
+            return False, f"Mã giảm giá không áp dụng cho gói {base_period}"
+    
+    return True, ""
+
+def use_coupon(code):
+    """Use a coupon (decrease uses_left)"""
+    coupons = load_coupons()
+    code = code.upper()
+    
+    if code not in coupons:
+        return False
+    
+    coupon = coupons[code]
+    
+    # Only decrease for limited coupons
+    if coupon.get('type') == 'limited':
+        coupon['uses_left'] = max(0, coupon.get('uses_left', 0) - 1)
+        coupons[code] = coupon
+        save_coupons(coupons)
+    
+    return True
+
+def get_keys_by_type(period):
+    """Get all keys for a specific period"""
+    file_path = get_key_file_path(period)
+    
+    try:
+        if not os.path.exists(file_path):
+            return []
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = [line.strip() for line in f.readlines() if line.strip()]
+        return lines
+    except Exception as e:
+        print(f"[KEY ERROR] Failed to get keys: {e}")
+        return []
+
+def delete_key(key, admin_email):
+    """Delete a specific key"""
+    return delete_key_from_file(key, admin_email)
 
 # =================== DB ===================
 def create_db():
@@ -670,8 +769,6 @@ def delete_key_from_file(key_to_delete, email=None):
         import traceback
         traceback.print_exc()
         return False
-        traceback.print_exc()
-        return False
 
 def generate_key(period):
     period_map_reverse = {"1 day": "1d", "7 day": "7d", "30 day": "30d", "90 day": "90d"}
@@ -772,6 +869,76 @@ def is_email_authorized(email):
     config = load_auth_config()
     return email.lower() in [e.lower() for e in config.get("authorized_emails", [])]
 
+def is_owner_email(email):
+    """Check if email is the owner"""
+    config = load_auth_config()
+    owner = config.get('owner_email', '').lower()
+    return email.lower() == owner if owner else False
+
+def get_admin_permissions(email):
+    """Get permissions for an admin email"""
+    try:
+        perms_file = 'data/dashboard/admins.json'
+        if os.path.exists(perms_file):
+            with open(perms_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                admin_data = data.get('admins', {}).get(email.lower(), None)
+                if admin_data:
+                    return admin_data.get('permissions', {})
+        return {
+            'dashboard': True,
+            'keys': True,
+            'orders': True,
+            'prices': False,
+            'coupons': False,
+            'settings': False,
+            'analytics': True
+        }
+    except:
+        return {
+            'dashboard': True,
+            'keys': True,
+            'orders': True,
+            'prices': False,
+            'coupons': False,
+            'settings': False,
+            'analytics': True
+        }
+
+def get_admin_role(email):
+    """Get role for an admin email (owner/admin)"""
+    try:
+        if is_owner_email(email):
+            return 'owner'
+        
+        perms_file = 'data/dashboard/admins.json'
+        if os.path.exists(perms_file):
+            with open(perms_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                admin_data = data.get('admins', {}).get(email.lower(), None)
+                if admin_data:
+                    return admin_data.get('role', 'admin')
+        return 'admin'
+    except:
+        return 'admin'
+
+def require_owner_auth(f):
+    """Decorator to require owner authentication"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin_email' not in session:
+            return redirect(url_for('admin_login'))
+        
+        if not is_owner_email(session.get('admin_email')):
+            # Return JSON error for API endpoints
+            if request.path.startswith('/admin/api/'):
+                return jsonify({'success': False, 'message': 'Chỉ Owner mới có quyền truy cập!'})
+            # Redirect with error for pages
+            return render_template('dashboard/access_denied.html', admin_email=session.get('admin_email'))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
 def generate_otp():
     """Generate 6-digit OTP"""
     return ''.join([str(random.randint(0, 9)) for _ in range(6)])
@@ -851,8 +1018,9 @@ def require_admin_auth(f):
 def get_all_dashboard_data():
     """Get all data for dashboard"""
     try:
+        order_stats = get_order_stats()
         data = {
-            'keys': {
+            'key_data': {
                 '1d': {'count': count_keys('1d'), 'list': get_keys_by_type('1d')[:10]},
                 '7d': {'count': count_keys('7d'), 'list': get_keys_by_type('7d')[:10]},
                 '30d': {'count': count_keys('30d'), 'list': get_keys_by_type('30d')[:10]},
@@ -860,10 +1028,14 @@ def get_all_dashboard_data():
             },
             'prices': load_prices(),
             'coupons': load_coupons(),
-            'orders': get_recent_orders(20),
+            'orders': get_recent_orders(50),
+            'order_stats': order_stats,
+            'settings': load_settings(),
             'stats': {
                 'total_keys': sum(count_keys(t) for t in ['1d', '7d', '30d', '90d']),
-                'total_orders': get_total_orders(),
+                'total_orders': order_stats['total'],
+                'paid_orders': order_stats['paid'],
+                'pending_orders': order_stats['pending'],
                 'total_coupons': len(load_coupons()),
             }
         }
@@ -878,7 +1050,7 @@ def get_recent_orders(limit=20):
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT uid, code, email, status, created_at 
+            SELECT uid, verification_code, email, paid, created_at 
             FROM orders 
             ORDER BY created_at DESC 
             LIMIT ?
@@ -891,7 +1063,7 @@ def get_recent_orders(limit=20):
                 'uid': o[0],
                 'code': o[1],
                 'email': o[2],
-                'status': o[3],
+                'status': 'Paid' if o[3] == 1 else 'Pending',
                 'created_at': o[4]
             }
             for o in orders
@@ -911,6 +1083,162 @@ def get_total_orders():
         return total
     except:
         return 0
+
+def reset_all_orders():
+    """Reset all orders (delete all)""" 
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM orders")
+        conn.commit()
+        conn.close()
+        print("[ORDERS] All orders deleted")
+        return True
+    except Exception as e:
+        print(f"[ORDERS ERROR] Failed to reset orders: {e}")
+        return False
+
+def delete_pending_orders(minutes=15):
+    """Delete pending orders older than specified minutes"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Calculate cutoff time
+        cutoff_time = datetime.now() - timedelta(minutes=minutes)
+        cutoff_str = cutoff_time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Delete unpaid orders older than cutoff
+        cursor.execute("""
+            DELETE FROM orders 
+            WHERE paid = 0 AND created_at < ?
+        """, (cutoff_str,))
+        
+        deleted_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        print(f"[ORDERS CLEANUP] Deleted {deleted_count} pending orders older than {minutes} minutes")
+        return deleted_count
+    except Exception as e:
+        print(f"[ORDERS CLEANUP ERROR] {e}")
+        return 0
+
+def get_order_stats():
+    """Get order statistics"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Total orders
+        cursor.execute("SELECT COUNT(*) FROM orders")
+        total = cursor.fetchone()[0]
+        
+        # Paid orders
+        cursor.execute("SELECT COUNT(*) FROM orders WHERE paid = 1")
+        paid = cursor.fetchone()[0]
+        
+        # Pending orders
+        cursor.execute("SELECT COUNT(*) FROM orders WHERE paid = 0")
+        pending = cursor.fetchone()[0]
+        
+        # Old pending orders (>15 min)
+        cutoff_time = datetime.now() - timedelta(minutes=15)
+        cutoff_str = cutoff_time.strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute("""
+            SELECT COUNT(*) FROM orders 
+            WHERE paid = 0 AND created_at < ?
+        """, (cutoff_str,))
+        old_pending = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return {
+            'total': total,
+            'paid': paid,
+            'pending': pending,
+            'old_pending': old_pending
+        }
+    except Exception as e:
+        print(f"[ORDER STATS ERROR] {e}")
+        return {'total': 0, 'paid': 0, 'pending': 0, 'old_pending': 0}
+
+# Settings management
+SETTINGS_FILE = "data/settings/settings.json"
+
+def load_settings():
+    """Load application settings"""
+    default_settings = {
+        # Auto cleanup
+        'cleanup_minutes': 15,
+        'cleanup_enabled': True,
+        'auto_cleanup_interval': 300,  # Run cleanup every 5 minutes
+        
+        # Email settings
+        'authorized_emails': [],
+        'sendgrid_key': None,
+        
+        # Payment settings
+        'mbbank_api': 'https://thueapibank.vn/historyapimbbankv2/',
+        'mbbank_account': '',
+        'mbbank_name': '',
+        'payment_enabled': True,
+        
+        # System settings
+        'site_name': 'VIP Service',
+        'github_repo': None,
+        'github_token': None,
+        'maintenance_mode': False
+    }
+    
+    try:
+        os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                # Merge with defaults
+                return {**default_settings, **settings}
+        return default_settings
+    except Exception as e:
+        print(f"[SETTINGS ERROR] Failed to load settings: {e}")
+        return default_settings
+
+def save_settings(settings):
+    """Save application settings"""
+    try:
+        os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
+        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, indent=2, ensure_ascii=False)
+        print(f"[SETTINGS] Saved settings: {settings}")
+        return True
+    except Exception as e:
+        print(f"[SETTINGS ERROR] Failed to save settings: {e}")
+        return False
+
+# Auto cleanup thread
+def auto_cleanup_worker():
+    """Background worker to auto-cleanup old pending orders"""
+    while True:
+        try:
+            settings = load_settings()
+            if settings.get('cleanup_enabled', True):
+                minutes = settings.get('cleanup_minutes', 15)
+                deleted = delete_pending_orders(minutes)
+                if deleted > 0:
+                    print(f"[AUTO CLEANUP] Removed {deleted} old pending orders")
+        except Exception as e:
+            print(f"[AUTO CLEANUP ERROR] {e}")
+        
+        # Wait for next cleanup cycle
+        settings = load_settings()
+        interval = settings.get('auto_cleanup_interval', 300)
+        threading.Event().wait(interval)
+
+def start_auto_cleanup():
+    """Start auto cleanup in background thread"""
+    cleanup_thread = threading.Thread(target=auto_cleanup_worker, daemon=True)
+    cleanup_thread.start()
+    print("[AUTO CLEANUP] Background cleanup thread started")
 
 # =================== Flask Routes ===================
 @app.route("/")
@@ -986,13 +1314,13 @@ def check_mb_payment():
 
     # --- FIXED API CALL ---
     try:
-        session = requests.Session()
-        session.headers.update({
+        session_req = requests.Session()
+        session_req.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
             "Accept": "application/json, text/plain, */*",
             "Connection": "keep-alive"
         })
-        resp = session.get(MB_API_URL, timeout=15)
+        resp = session_req.get(MB_API_URL, timeout=15)
         resp.raise_for_status()
         transactions = resp.json().get("transactions", [])
     except Exception as e:
@@ -1113,14 +1441,15 @@ def check_mb_payment():
             # Đây là old promo system từ database
             decrement_promo(promo_code)
 
-    tg_msg = (
-        f"🎉 <b>Đơn hàng mới!</b>\n"
-        f"UID: {uid}\nEmail: {email}\nKey: {key}\n"
-        f"Mã giảm giá: {promo_code or 'Không'}\nGiảm: {discount_percent}%\n"
-        f"Số tiền: {final_amount}đ\n"
-        f"Thời gian: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"
-    )
-    send_telegram(tg_msg)
+    # LOG INSTEAD OF SENDING TELEGRAM
+    print(f"[ORDER] 🎉 New order!")
+    print(f"[ORDER] UID: {uid}")
+    print(f"[ORDER] Email: {email}")
+    print(f"[ORDER] Key: {key}")
+    print(f"[ORDER] Promo: {promo_code or 'None'}")
+    print(f"[ORDER] Discount: {discount_percent}%")
+    print(f"[ORDER] Amount: {final_amount}đ")
+    print(f"[ORDER] Time: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
     return jsonify({
         "status": "ok",
@@ -1140,15 +1469,15 @@ def check_mb_payment():
 def mbbank_api_status():
     """Check MBBank API status"""
     try:
-        session = requests.Session()
-        session.headers.update({
+        session_req = requests.Session()
+        session_req.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
             "Accept": "application/json, text/plain, */*",
             "Connection": "keep-alive"
         })
         
         start_time = datetime.now()
-        resp = session.get(MB_API_URL, timeout=10)
+        resp = session_req.get(MB_API_URL, timeout=10)
         response_time = (datetime.now() - start_time).total_seconds() * 1000
         
         if resp.status_code == 200:
@@ -1365,14 +1694,162 @@ def admin_verify_otp():
         print(f"[VERIFY OTP ERROR] {e}")
         return jsonify({'success': False, 'message': f'Lỗi: {str(e)}'})
 
+@app.route("/admin/login-password", methods=["POST"])
+def admin_login_password():
+    """Login with password (fallback when OTP fails)"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '').strip()
+        remember_me = data.get('remember_me', False)
+        
+        if not email or not password:
+            return jsonify({'success': False, 'message': 'Email và Password không được để trống'})
+        
+        # Check if email is authorized
+        if not is_email_authorized(email):
+            return jsonify({'success': False, 'message': 'Email không có quyền truy cập'})
+        
+        # Load password_access from auth.json
+        config = load_auth_config()
+        password_access = config.get('password_access', {})
+        
+        # Verify password
+        if email not in password_access or password_access[email] != password:
+            return jsonify({'success': False, 'message': 'Password không chính xác'})
+        
+        # Create session
+        session['admin_email'] = email
+        session.permanent = True
+        
+        # Set session lifetime based on remember_me
+        if remember_me:
+            app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=60)
+        else:
+            app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Đăng nhập thành công',
+            'redirect': url_for('admin_dashboard')
+        })
+            
+    except Exception as e:
+        print(f"[LOGIN PASSWORD ERROR] {e}")
+        return jsonify({'success': False, 'message': f'Lỗi: {str(e)}'})
+
 @app.route("/admin/dashboard")
 @require_admin_auth
 def admin_dashboard():
-    """Admin dashboard page"""
+    """Admin dashboard page - redirect to home"""
+    return redirect(url_for('admin_dashboard_home'))
+
+@app.route("/admin/dashboard/home")
+@require_admin_auth  
+def admin_dashboard_home():
+    """Admin dashboard home page"""
     data = get_all_dashboard_data()
-    return render_template('admin_dashboard.html', 
+    return render_template('dashboard/home.html', 
                          data=data, 
-                         admin_email=session.get('admin_email'))
+                         admin_email=session.get('admin_email'),
+                         is_owner=is_owner_email(session.get('admin_email')))
+
+@app.route("/admin/dashboard/keys")
+@require_admin_auth
+def admin_dashboard_keys():
+    """Keys management page"""
+    data = get_all_dashboard_data()
+    return render_template('dashboard/keys.html',
+                         data=data,
+                         admin_email=session.get('admin_email'),
+                         is_owner=is_owner_email(session.get('admin_email')))
+
+@app.route("/admin/dashboard/orders")
+@require_admin_auth
+def admin_dashboard_orders():
+    """Orders management page"""
+    data = get_all_dashboard_data()
+    return render_template('dashboard/orders.html',
+                         data=data,
+                         admin_email=session.get('admin_email'),
+                         is_owner=is_owner_email(session.get('admin_email')))
+
+@app.route("/admin/dashboard/prices")
+@require_admin_auth
+def admin_dashboard_prices():
+    """Prices management page"""
+    data = get_all_dashboard_data()
+    return render_template('dashboard/prices.html',
+                         data=data,
+                         admin_email=session.get('admin_email'),
+                         is_owner=is_owner_email(session.get('admin_email')))
+
+@app.route("/admin/dashboard/coupons")
+@require_admin_auth
+def admin_dashboard_coupons():
+    """Coupons management page"""
+    data = get_all_dashboard_data()
+    return render_template('dashboard/coupons.html',
+                         data=data,
+                         admin_email=session.get('admin_email'),
+                         is_owner=is_owner_email(session.get('admin_email')))
+
+@app.route("/admin/dashboard/settings")
+@require_admin_auth
+def admin_dashboard_settings():
+    """Settings page"""
+    data = get_all_dashboard_data()
+    return render_template('dashboard/settings.html',
+                         data=data,
+                         admin_email=session.get('admin_email'),
+                         is_owner=is_owner_email(session.get('admin_email')))
+
+@app.route("/admin/dashboard/analytics")
+@require_admin_auth
+def admin_dashboard_analytics():
+    """Analytics page"""
+    data = get_all_dashboard_data()
+    return render_template('dashboard/analytics.html',
+                         data=data,
+                         admin_email=session.get('admin_email'),
+                         is_owner=is_owner_email(session.get('admin_email')))
+
+@app.route("/admin/dashboard/user-settings")
+@require_admin_auth
+def admin_dashboard_user_settings():
+    """User Settings page"""
+    data = get_all_dashboard_data()
+    
+    # Load user settings from JSON
+    user_settings_file = 'data/dashboard/user_settings.json'
+    user_data = {}
+    
+    if os.path.exists(user_settings_file):
+        try:
+            with open(user_settings_file, 'r', encoding='utf-8') as f:
+                all_users = json.load(f)
+                user_data = all_users.get(session.get('admin_email'), {})
+        except:
+            pass
+    
+    return render_template('dashboard/user_settings.html',
+                         data=data,
+                         user=user_data,
+                         admin_email=session.get('admin_email'),
+                         is_owner=is_owner_email(session.get('admin_email')))
+
+@app.route("/admin/dashboard/admins")
+@require_owner_auth
+def admin_dashboard_admins():
+    """Admin Management page - Owner only"""
+    data = get_all_dashboard_data()
+    settings = load_settings()
+    
+    return render_template('dashboard/admins.html',
+                         data=data,
+                         owner_email=settings.get('owner_email', ''),
+                         admin_email=session.get('admin_email'),
+                         is_owner=True)
 
 @app.route("/admin/logout")
 def admin_logout():
@@ -1616,7 +2093,7 @@ def admin_api_mbbank_status():
             response = client.get('/api/mbbank/status')
             data = response.get_json()
             
-        if data and data.get('status') == 'active':
+        if data and data.get('status') == 'ok':
             return jsonify({
                 'success': True,
                 'status': 'online',
@@ -1635,23 +2112,544 @@ def admin_api_mbbank_status():
             'message': f'Error checking API: {str(e)}'
         })
 
+# =================== Order Management API ===================
+@app.route("/admin/api/orders", methods=["GET"])
+@require_admin_auth
+def admin_api_get_orders():
+    """Get all orders with filters"""
+    try:
+        status_filter = request.args.get('status', 'all')  # all, paid, pending
+        limit = int(request.args.get('limit', 100))
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        if status_filter == 'paid':
+            cursor.execute("""
+                SELECT uid, verification_code, email, key, promo_code, paid, created_at 
+                FROM orders 
+                WHERE paid = 1
+                ORDER BY created_at DESC 
+                LIMIT ?
+            """, (limit,))
+        elif status_filter == 'pending':
+            cursor.execute("""
+                SELECT uid, verification_code, email, key, promo_code, paid, created_at 
+                FROM orders 
+                WHERE paid = 0
+                ORDER BY created_at DESC 
+                LIMIT ?
+            """, (limit,))
+        else:
+            cursor.execute("""
+                SELECT uid, verification_code, email, key, promo_code, paid, created_at 
+                FROM orders 
+                ORDER BY created_at DESC 
+                LIMIT ?
+            """, (limit,))
+        
+        orders = cursor.fetchall()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'orders': [
+                {
+                    'uid': o[0],
+                    'code': o[1],
+                    'email': o[2] or '',
+                    'key': o[3] or '',
+                    'promo_code': o[4] or '',
+                    'status': 'Paid' if o[5] == 1 else 'Pending',
+                    'created_at': o[6]
+                }
+                for o in orders
+            ]
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/orders/reset", methods=["POST"])
+@require_admin_auth
+def admin_api_reset_orders():
+    """Reset all orders"""
+    try:
+        success = reset_all_orders()
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Đã xóa tất cả orders thành công'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Lỗi khi xóa orders'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/orders/cleanup", methods=["POST"])
+@require_admin_auth
+def admin_api_cleanup_orders():
+    """Cleanup old pending orders"""
+    try:
+        data = request.get_json() or {}
+        minutes = data.get('minutes', 15)
+        
+        deleted_count = delete_pending_orders(minutes)
+        return jsonify({
+            'success': True,
+            'deleted_count': deleted_count,
+            'message': f'Đã xóa {deleted_count} orders pending quá {minutes} phút'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/orders/<uid>", methods=["DELETE"])
+@require_admin_auth
+def admin_api_delete_order(uid):
+    """Delete specific order"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM orders WHERE uid = ?", (uid,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Đã xóa order {uid}'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/orders/<uid>/approve", methods=["POST"])
+@require_admin_auth
+def admin_api_approve_order(uid):
+    """Approve/mark order as paid"""
+    try:
+        mark_paid(uid)
+        return jsonify({
+            'success': True,
+            'message': f'Đã duyệt order {uid}'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/settings", methods=["GET", "POST"])
+@require_admin_auth
+def admin_api_settings():
+    """Get or update settings"""
+    try:
+        if request.method == "GET":
+            settings = load_settings()
+            auth_config = load_auth_config()
+            
+            # Merge owner_email and authorized_emails from auth.json
+            settings['owner_email'] = auth_config.get('owner_email', '')
+            settings['authorized_emails'] = auth_config.get('authorized_emails', [])
+            
+            return jsonify({'success': True, 'settings': settings})
+        else:
+            data = request.get_json()
+            category = data.get('category')
+            new_settings = data.get('settings', {})
+            
+            settings = load_settings()
+            
+            # Update settings based on category
+            if category == 'cleanup':
+                if 'cleanup_minutes' in new_settings:
+                    settings['cleanup_minutes'] = int(new_settings['cleanup_minutes'])
+                if 'cleanup_enabled' in new_settings:
+                    settings['cleanup_enabled'] = bool(new_settings['cleanup_enabled'])
+            
+            elif category == 'email':
+                # owner_email and authorized_emails should be saved to auth.json
+                auth_config = load_auth_config()
+                auth_updated = False
+                
+                if 'owner_email' in new_settings:
+                    auth_config['owner_email'] = new_settings['owner_email']
+                    auth_updated = True
+                if 'authorized_emails' in new_settings:
+                    auth_config['authorized_emails'] = new_settings['authorized_emails']
+                    auth_updated = True
+                
+                # Save auth.json if updated
+                if auth_updated:
+                    try:
+                        with open(AUTH_FILE, 'w', encoding='utf-8') as f:
+                            json.dump(auth_config, f, indent=2, ensure_ascii=False)
+                    except Exception as e:
+                        print(f"[AUTH] Error saving auth config: {e}")
+                
+                # SendGrid key stays in settings.json
+                if 'sendgrid_key' in new_settings:
+                    settings['sendgrid_key'] = new_settings['sendgrid_key']
+            
+            elif category == 'payment':
+                if 'mbbank_api' in new_settings:
+                    settings['mbbank_api'] = new_settings['mbbank_api']
+                if 'mbbank_account' in new_settings:
+                    settings['mbbank_account'] = new_settings['mbbank_account']
+                if 'mbbank_name' in new_settings:
+                    settings['mbbank_name'] = new_settings['mbbank_name']
+                if 'payment_enabled' in new_settings:
+                    settings['payment_enabled'] = bool(new_settings['payment_enabled'])
+            
+            elif category == 'system':
+                if 'site_name' in new_settings:
+                    settings['site_name'] = new_settings['site_name']
+                if 'github_repo' in new_settings:
+                    settings['github_repo'] = new_settings['github_repo']
+                if 'github_token' in new_settings:
+                    settings['github_token'] = new_settings['github_token']
+                if 'maintenance_mode' in new_settings:
+                    settings['maintenance_mode'] = bool(new_settings['maintenance_mode'])
+            
+            else:
+                # Fallback: merge all settings
+                settings.update(new_settings)
+            
+            if save_settings(settings):
+                return jsonify({
+                    'success': True,
+                    'message': 'Đã cập nhật cài đặt thành công',
+                    'settings': settings
+                })
+            else:
+                return jsonify({'success': False, 'message': 'Lỗi lưu cài đặt'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/clear-all-data", methods=["POST"])
+@require_admin_auth
+def admin_api_clear_all_data():
+    """Clear all data (dangerous operation)"""
+    try:
+        # Clear all orders
+        reset_all_orders()
+        
+        # Clear all coupons
+        save_coupons({})
+        
+        # Clear all keys
+        for period in ['1d', '7d', '30d', '90d']:
+            github_manager._write_file_content(
+                f'data/keys/key{period}.txt',
+                '',
+                f'Clear all {period} keys'
+            )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Đã xóa tất cả dữ liệu'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/reset-settings", methods=["POST"])
+@require_admin_auth
+def admin_api_reset_settings():
+    """Reset all settings to default"""
+    try:
+        default_settings = {
+            'cleanup_minutes': 15,
+            'cleanup_enabled': True,
+            'authorized_emails': [],
+            'sendgrid_key': None,
+            'mbbank_api': 'https://thueapibank.vn/historyapimbbankv2/',
+            'mbbank_account': '',
+            'mbbank_name': '',
+            'payment_enabled': True,
+            'site_name': 'VIP Service',
+            'github_repo': None,
+            'github_token': None,
+            'maintenance_mode': False
+        }
+        
+        if save_settings(default_settings):
+            return jsonify({
+                'success': True,
+                'message': 'Đã khôi phục cài đặt mặc định'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Lỗi lưu cài đặt'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/background-images", methods=["GET"])
+@require_admin_auth
+def admin_api_background_images():
+    """Get list of available background images"""
+    try:
+        bg_file = 'data/dashboard/backgroundimg/img.json'
+        
+        # Create directory if not exists
+        os.makedirs(os.path.dirname(bg_file), exist_ok=True)
+        
+        # Create default file if not exists
+        if not os.path.exists(bg_file):
+            default_data = {
+                "background_images": [
+                    "No.1: https://www.publicdomainpictures.net/pictures/610000/velka/seamless-floral-wallpaper-art-1715193626Gct.jpg",
+                    "No.2: https://www.publicdomainpictures.net/pictures/390000/velka/cyborg-1614575852D41.jpg",
+                    "No.3: https://www.publicdomainpictures.net/pictures/400000/velka/abstract-technology-background-1620917015K0K.jpg"
+                ]
+            }
+            with open(bg_file, 'w', encoding='utf-8') as f:
+                json.dump(default_data, f, indent=4, ensure_ascii=False)
+        
+        # Read background images
+        with open(bg_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Parse images (format: "No.X: URL")
+        images = []
+        for item in data.get('background_images', []):
+            if isinstance(item, str) and ':' in item:
+                parts = item.split(':', 1)
+                if len(parts) == 2:
+                    name = parts[0].strip()
+                    url = parts[1].strip()
+                    if url:  # Only add if URL is not empty
+                        images.append({
+                            'name': name,
+                            'url': url
+                        })
+        
+        return jsonify({
+            'success': True,
+            'images': images
+        })
+    except Exception as e:
+        print(f"Error loading background images: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
+
+@app.route("/admin/api/user-settings", methods=["POST"])
+@require_admin_auth
+def admin_api_user_settings():
+    """Save user settings (avatar, display name, bio)"""
+    try:
+        data = request.get_json()
+        avatar_url = data.get('avatar_url', '').strip()
+        display_name = data.get('display_name', '').strip()
+        bio = data.get('bio', '').strip()
+        
+        if not display_name:
+            return jsonify({'success': False, 'message': 'Tên hiển thị không được để trống'})
+        
+        # Create directory if not exists
+        settings_file = 'data/dashboard/user_settings.json'
+        os.makedirs(os.path.dirname(settings_file), exist_ok=True)
+        
+        # Load existing settings
+        all_users = {}
+        if os.path.exists(settings_file):
+            try:
+                with open(settings_file, 'r', encoding='utf-8') as f:
+                    all_users = json.load(f)
+            except:
+                pass
+        
+        # Update user settings
+        admin_email = session.get('admin_email')
+        all_users[admin_email] = {
+            'avatar_url': avatar_url,
+            'display_name': display_name,
+            'bio': bio,
+            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        # Save to file
+        with open(settings_file, 'w', encoding='utf-8') as f:
+            json.dump(all_users, f, indent=4, ensure_ascii=False)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Đã lưu thông tin thành công'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
+
+@app.route("/admin/api/admins", methods=["GET"])
+@require_owner_auth
+def admin_api_get_admins():
+    """Get list of admins and their permissions"""
+    try:
+        settings = load_settings()
+        authorized_emails = settings.get('authorized_emails', [])
+        
+        # Load permissions
+        perms_file = 'data/dashboard/admins.json'
+        permissions = {}
+        
+        if os.path.exists(perms_file):
+            with open(perms_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                permissions = data.get('permissions', {})
+        
+        return jsonify({
+            'success': True,
+            'admins': authorized_emails,
+            'permissions': permissions
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        })
+
+@app.route("/admin/api/admins", methods=["POST"])
+@require_owner_auth
+def admin_api_add_admin():
+    """Add new admin"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({'success': False, 'message': 'Email không được để trống'})
+        
+        # Validate email format
+        import re
+        if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
+            return jsonify({'success': False, 'message': 'Email không hợp lệ'})
+        
+        settings = load_settings()
+        owner_email = settings.get('owner_email', '').lower()
+        
+        # Check if email is owner
+        if email == owner_email:
+            return jsonify({'success': False, 'message': 'Email này là Owner, không thể thêm vào danh sách Admin'})
+        
+        # Get current authorized emails
+        authorized_emails = settings.get('authorized_emails', [])
+        
+        # Check if already exists
+        if email in [e.lower() for e in authorized_emails]:
+            return jsonify({'success': False, 'message': 'Email này đã tồn tại trong danh sách Admin'})
+        
+        # Add to list
+        authorized_emails.append(email)
+        settings['authorized_emails'] = authorized_emails
+        
+        # Save settings
+        if save_settings(settings):
+            # Create default permissions
+            perms_file = 'data/dashboard/admins.json'
+            os.makedirs(os.path.dirname(perms_file), exist_ok=True)
+            
+            perms_data = {'permissions': {}}
+            if os.path.exists(perms_file):
+                with open(perms_file, 'r', encoding='utf-8') as f:
+                    perms_data = json.load(f)
+            
+            perms_data['permissions'][email] = {
+                'dashboard': True,
+                'keys': True,
+                'orders': True,
+                'prices': True,
+                'coupons': True,
+                'settings': False,
+                'analytics': True
+            }
+            
+            with open(perms_file, 'w', encoding='utf-8') as f:
+                json.dump(perms_data, f, indent=4, ensure_ascii=False)
+            
+            return jsonify({'success': True, 'message': 'Đã thêm admin thành công'})
+        else:
+            return jsonify({'success': False, 'message': 'Lỗi lưu cài đặt'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/admins/<email>", methods=["DELETE"])
+@require_owner_auth
+def admin_api_delete_admin(email):
+    """Delete admin"""
+    try:
+        email = email.lower()
+        
+        settings = load_settings()
+        authorized_emails = settings.get('authorized_emails', [])
+        
+        # Remove from list
+        authorized_emails = [e for e in authorized_emails if e.lower() != email]
+        settings['authorized_emails'] = authorized_emails
+        
+        # Save settings
+        if save_settings(settings):
+            # Remove permissions
+            perms_file = 'data/dashboard/admins.json'
+            if os.path.exists(perms_file):
+                with open(perms_file, 'r', encoding='utf-8') as f:
+                    perms_data = json.load(f)
+                
+                if email in perms_data.get('permissions', {}):
+                    del perms_data['permissions'][email]
+                    
+                    with open(perms_file, 'w', encoding='utf-8') as f:
+                        json.dump(perms_data, f, indent=4, ensure_ascii=False)
+            
+            return jsonify({'success': True, 'message': 'Đã xóa admin thành công'})
+        else:
+            return jsonify({'success': False, 'message': 'Lỗi lưu cài đặt'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route("/admin/api/admins/<email>/permissions", methods=["POST"])
+@require_owner_auth
+def admin_api_update_permissions(email):
+    """Update admin permissions"""
+    try:
+        email = email.lower()
+        data = request.get_json()
+        permissions = data.get('permissions', {})
+        
+        perms_file = 'data/dashboard/admins.json'
+        os.makedirs(os.path.dirname(perms_file), exist_ok=True)
+        
+        perms_data = {'permissions': {}}
+        if os.path.exists(perms_file):
+            with open(perms_file, 'r', encoding='utf-8') as f:
+                perms_data = json.load(f)
+        
+        perms_data['permissions'][email] = permissions
+        
+        with open(perms_file, 'w', encoding='utf-8') as f:
+            json.dump(perms_data, f, indent=4, ensure_ascii=False)
+        
+        return jsonify({'success': True, 'message': 'Đã cập nhật quyền thành công'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
 # =================== Main ===================
 if __name__ == "__main__":
     create_db()
     initialize_key_files()
     
-    # Sync keys from GitHub on startup
+    # Sync keys from GitHub on startup (if available)
     try:
         from sync_keys import sync_keys_from_github, start_auto_sync
         sync_keys_from_github()
         # Start auto-sync in background
         start_auto_sync()
+        print("[STARTUP] ✅ GitHub sync enabled")
     except Exception as e:
-        print(f"[STARTUP] Warning: Failed to sync keys from GitHub: {e}")
+        print(f"[STARTUP] ⚠️ GitHub sync disabled: {e}")
     
-    # Start bot polling in a separate thread
+    # # Start bot polling in a separate thread
     bot_thread = threading.Thread(target=start_bot, daemon=True)
     bot_thread.start()
     
+    # Start auto cleanup thread
+    start_auto_cleanup()
+    print("[STARTUP] ✅ Auto cleanup thread started")
+    
     port = int(os.environ.get('PORT', 5550))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)

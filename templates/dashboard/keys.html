@@ -1,0 +1,313 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Quản Lý Keys - Admin Studio{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Quản Lý Keys</h1>
+
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Danh Sách Keys</h2>
+        <button class="btn btn-primary" onclick="showAddKeyModal()">
+            <i class="fas fa-plus"></i>
+            Thêm Key
+        </button>
+    </div>
+    
+    <!-- Tabs -->
+    <div style="border-bottom: 1px solid var(--border-color); padding: 0 24px;">
+        <div style="display: flex; gap: 24px;">
+            <button class="tab-btn active" data-tab="1d" onclick="switchTab('1d')">
+                1 Ngày ({{ data.key_data['1d'].count }})
+            </button>
+            <button class="tab-btn" data-tab="7d" onclick="switchTab('7d')">
+                1 Tuần ({{ data.key_data['7d'].count }})
+            </button>
+            <button class="tab-btn" data-tab="30d" onclick="switchTab('30d')">
+                1 Tháng ({{ data.key_data['30d'].count }})
+            </button>
+            <button class="tab-btn" data-tab="90d" onclick="switchTab('90d')">
+                1 Mùa ({{ data.key_data['90d'].count }})
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    {% for period, period_data in data.key_data.items() %}
+    <div class="tab-content {% if period == '1d' %}active{% endif %}" id="tab-{{ period }}">
+        <div style="padding: 16px 24px; border-bottom: 1px solid var(--border-color);">
+            <button class="btn btn-secondary btn-sm" onclick="loadKeys('{{ period }}')">
+                <i class="fas fa-sync-alt"></i>
+                Reload
+            </button>
+        </div>
+        <div class="table-container">
+            <table id="keyTable-{{ period }}">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">#</th>
+                        <th>Key</th>
+                        <th style="width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if period_data.list %}
+                        {% for key in period_data.list %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><code>{{ key }}</code></td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="deleteKey('{{ period }}', '{{ key }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if period_data.count > 10 %}
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: var(--text-secondary); font-size: 12px;">
+                                ... và {{ period_data.count - 10 }} keys khác
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: var(--text-secondary);">
+                                Không có key nào
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Add Key Modal -->
+<div class="modal" id="addKeyModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Thêm Key Mới</h3>
+            <button class="modal-close" onclick="closeAddKeyModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="addKeyForm">
+            <div class="modal-body">
+                <div id="addKeyAlert"></div>
+                
+                <div class="form-group">
+                    <label class="form-label">Loại Key</label>
+                    <select class="form-control" id="keyPeriod" required>
+                        <option value="1d">1 Ngày</option>
+                        <option value="7d">1 Tuần</option>
+                        <option value="30d" selected>1 Tháng</option>
+                        <option value="90d">1 Mùa</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Key</label>
+                    <textarea class="form-control" id="keyValue" rows="4" placeholder="Nhập key..." required></textarea>
+                    <small style="color: var(--text-secondary); font-size: 12px;">
+                        Có thể nhập nhiều keys, mỗi key một dòng
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAddKeyModal()">
+                    Hủy
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    Thêm Key
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .tab-btn {
+        padding: 12px 0;
+        border: none;
+        background: transparent;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: var(--text-primary);
+    }
+
+    .tab-btn.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentTab = '1d';
+
+    function switchTab(period) {
+        currentTab = period;
+        
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-tab') === period) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById('tab-' + period).classList.add('active');
+    }
+
+    function showAddKeyModal() {
+        document.getElementById('keyPeriod').value = currentTab;
+        document.getElementById('addKeyModal').classList.add('active');
+    }
+
+    function closeAddKeyModal() {
+        document.getElementById('addKeyModal').classList.remove('active');
+        document.getElementById('addKeyForm').reset();
+        document.getElementById('addKeyAlert').innerHTML = '';
+    }
+
+    document.getElementById('addKeyForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const period = document.getElementById('keyPeriod').value;
+        const keyValue = document.getElementById('keyValue').value.trim();
+        
+        if (!keyValue) {
+            showAlert('addKeyAlert', 'Vui lòng nhập key!', 'error');
+            return;
+        }
+
+        const keys = keyValue.split('\n').map(k => k.trim()).filter(k => k);
+        
+        try {
+            let successCount = 0;
+            for (const key of keys) {
+                const response = await fetch(`/admin/api/keys/${period}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    successCount++;
+                }
+            }
+            
+            showAlert('addKeyAlert', `Đã thêm ${successCount}/${keys.length} keys thành công!`, 'success');
+            setTimeout(() => {
+                closeAddKeyModal();
+                location.reload();
+            }, 1500);
+        } catch (error) {
+            showAlert('addKeyAlert', 'Lỗi: ' + error.message, 'error');
+        }
+    });
+
+    async function loadKeys(period) {
+        try {
+            const response = await fetch(`/admin/api/keys/${period}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const tbody = document.querySelector(`#keyTable-${period} tbody`);
+                tbody.innerHTML = '';
+                
+                if (data.keys.length > 0) {
+                    data.keys.slice(0, 10).forEach((key, index) => {
+                        const row = `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td><code>${key}</code></td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteKey('${period}', '${key}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                    
+                    if (data.count > 10) {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: var(--text-secondary); font-size: 12px;">
+                                    ... và ${data.count - 10} keys khác
+                                </td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-secondary);">Không có key nào</td></tr>';
+                }
+                
+                // Update count in tab
+                document.querySelector(`.tab-btn[data-tab="${period}"]`).textContent = 
+                    document.querySelector(`.tab-btn[data-tab="${period}"]`).textContent.replace(/\d+/, data.count);
+            }
+        } catch (error) {
+            showErrorNotification('Lỗi tải keys: ' + error.message);
+        }
+    }
+
+    async function deleteKey(period, key) {
+        showConfirmDialog(
+            'Xóa Key',
+            `Bạn có chắc muốn xóa key này?<br><code style="font-family: monospace; background: rgba(0,0,0,0.1); padding: 4px 8px; border-radius: 6px;">${key}</code>`,
+            async () => {
+                try {
+                    const response = await fetch(`/admin/api/keys/${period}/${encodeURIComponent(key)}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccessNotification('Đã xóa key thành công!');
+                        loadKeys(period);
+                    } else {
+                        showErrorNotification('Lỗi: ' + data.message);
+                    }
+                } catch (error) {
+                    showErrorNotification('Lỗi: ' + error.message);
+                }
+            }
+        );
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('addKeyModal').addEventListener('click', (e) => {
+        if (e.target.id === 'addKeyModal') {
+            closeAddKeyModal();
+        }
+    });
+</script>
+{% endblock %}

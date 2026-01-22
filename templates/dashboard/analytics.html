@@ -1,0 +1,271 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Analytics - Admin Studio{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Analytics & Thống Kê</h1>
+
+<!-- Overview Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #dbeafe;">
+            <i class="fas fa-chart-line" style="color: #3b82f6;"></i>
+        </div>
+        <div class="stat-details">
+            <div class="stat-label">Tổng Doanh Thu</div>
+            <div class="stat-value" id="totalRevenue">₫0</div>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up"></i> 12.5% so với tháng trước
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #dcfce7;">
+            <i class="fas fa-shopping-cart" style="color: #10b981;"></i>
+        </div>
+        <div class="stat-details">
+            <div class="stat-label">Đơn Hàng Thành Công</div>
+            <div class="stat-value">{{ data.order_stats.paid }}</div>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up"></i> {{ ((data.order_stats.paid / (data.order_stats.total or 1)) * 100)|round(1) }}% tỷ lệ chuyển đổi
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #fef3c7;">
+            <i class="fas fa-users" style="color: #f59e0b;"></i>
+        </div>
+        <div class="stat-details">
+            <div class="stat-label">Khách Hàng</div>
+            <div class="stat-value" id="totalCustomers">0</div>
+            <div class="stat-change">
+                <i class="fas fa-minus"></i> Chưa có dữ liệu
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #e0e7ff;">
+            <i class="fas fa-key" style="color: #6366f1;"></i>
+        </div>
+        <div class="stat-details">
+            <div class="stat-label">Keys Đã Bán</div>
+            <div class="stat-value">{{ data.order_stats.paid }}</div>
+            <div class="stat-change positive">
+                <i class="fas fa-check"></i> Hoạt động tốt
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 24px;">
+    <!-- Revenue Chart -->
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">Doanh Thu 7 Ngày Qua</h2>
+            <select class="form-control" style="width: auto;" id="periodFilter">
+                <option value="7">7 ngày</option>
+                <option value="30">30 ngày</option>
+                <option value="90">90 ngày</option>
+            </select>
+        </div>
+        <div style="padding: 20px;">
+            <canvas id="revenueChart" height="80"></canvas>
+        </div>
+    </div>
+
+    <!-- Package Distribution -->
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">Phân Bổ Gói</h2>
+        </div>
+        <div style="padding: 20px;">
+            <canvas id="packageChart" height="180"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Orders by Status -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
+    <!-- Top Selling Packages -->
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">Gói Bán Chạy Nhất</h2>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Gói</th>
+                        <th>Đã Bán</th>
+                        <th>Doanh Thu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="badge badge-info">1 Tháng</span></td>
+                        <td><strong>-</strong></td>
+                        <td>₫-</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-info">1 Tuần</span></td>
+                        <td><strong>-</strong></td>
+                        <td>₫-</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-info">1 Ngày</span></td>
+                        <td><strong>-</strong></td>
+                        <td>₫-</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-info">1 Mùa</span></td>
+                        <td><strong>-</strong></td>
+                        <td>₫-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">Hoạt Động Gần Đây</h2>
+        </div>
+        <div style="padding: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                {% for order in data.orders[:5] %}
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+                    {% if order.status == 'Paid' %}
+                    <div style="width: 40px; height: 40px; background: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-check" style="color: #10b981;"></i>
+                    </div>
+                    {% else %}
+                    <div style="width: 40px; height: 40px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-clock" style="color: #f59e0b;"></i>
+                    </div>
+                    {% endif %}
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; color: var(--text-primary);">{{ order.email or 'Khách hàng' }}</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">{{ order.created_at }}</div>
+                    </div>
+                    <span class="badge badge-{{ 'success' if order.status == 'Paid' else 'warning' }}">
+                        {{ order.status }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Metrics -->
+<div class="section" style="margin-top: 24px;">
+    <div class="section-header">
+        <h2 class="section-title">Chỉ Số Hiệu Suất</h2>
+    </div>
+    <div style="padding: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <div style="text-align: center;">
+            <div style="font-size: 32px; font-weight: 600; color: var(--primary-color);">
+                {{ ((data.order_stats.paid / (data.order_stats.total or 1)) * 100)|round(1) }}%
+            </div>
+            <div style="color: var(--text-secondary); margin-top: 8px;">Tỷ Lệ Thanh Toán</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 32px; font-weight: 600; color: #10b981;">
+                {{ data.stats.total_keys }}
+            </div>
+            <div style="color: var(--text-secondary); margin-top: 8px;">Keys Khả Dụng</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 32px; font-weight: 600; color: #f59e0b;">
+                {{ data.stats.total_coupons }}
+            </div>
+            <div style="color: var(--text-secondary); margin-top: 8px;">Mã Giảm Giá</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 32px; font-weight: 600; color: #ef4444;">
+                {{ data.order_stats.pending }}
+            </div>
+            <div style="color: var(--text-secondary); margin-top: 8px;">Đơn Chờ Duyệt</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Revenue Chart
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    const revenueChart = new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Doanh Thu',
+                data: [0, 0, 0, 0, 0, 0, 0],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₫' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Package Distribution Chart
+    // Data from server template
+    var key1d = parseInt('{{ data.key_data["1d"].count|default(0) }}');
+    var key7d = parseInt('{{ data.key_data["7d"].count|default(0) }}');
+    var key30d = parseInt('{{ data.key_data["30d"].count|default(0) }}');
+    var key90d = parseInt('{{ data.key_data["90d"].count|default(0) }}');
+    
+    const packageCtx = document.getElementById('packageChart').getContext('2d');
+    const packageChart = new Chart(packageCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['1 Ngày', '1 Tuần', '1 Tháng', '1 Mùa'],
+            datasets: [{
+                data: [key1d, key7d, key30d, key90d],
+                backgroundColor: [
+                    '#3b82f6',
+                    '#10b981',
+                    '#f59e0b',
+                    '#ef4444'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

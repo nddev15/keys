@@ -483,6 +483,45 @@
                 <button type="submit" class="btn btn-primary" id="sendOtpBtn">
                     Gửi mã OTP
                 </button>
+                <div class="password-fallback" style="margin-top: 12px; text-align: center; display: none;" id="passwordFallback">
+                    <a href="#" id="usePasswordLink" style="color: rgba(0, 0, 0, 0.6); font-size: 13px; text-decoration: none; font-weight: 500;">
+                        <i class="fas fa-key"></i> Dùng Password?
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Password Section -->
+        <div class="password-section" id="passwordSection" style="display: none;">
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label for="passwordEmail">Email quản trị</label>
+                    <input 
+                        type="email" 
+                        id="passwordEmail" 
+                        placeholder="admin@example.com"
+                        required
+                        readonly
+                        style="background: rgba(255, 255, 255, 0.2); cursor: not-allowed;"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        placeholder="Nhập password của bạn"
+                        required
+                        autocomplete="current-password"
+                    >
+                    <div id="passwordError" class="form-error" style="display: none;"></div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="loginPasswordBtn">
+                    Đăng nhập
+                </button>
+                <div class="back-link" style="margin-top: 12px;">
+                    <a href="#" id="backToOtpLink">← Quay lại OTP</a>
+                </div>
             </form>
         </div>
 
@@ -659,6 +698,8 @@
                     otpInput.focus();
                 } else {
                     showAlert(data.message, 'error');
+                    // Show password fallback option if OTP send fails
+                    document.getElementById('passwordFallback').style.display = 'block';
                 }
             } catch (error) {
                 showAlert('Lỗi kết nối. Vui lòng thử lại.', 'error');
@@ -753,6 +794,70 @@
                 clearInterval(timerInterval);
             }
             timerDiv.textContent = '';
+        });
+
+        // Password fallback toggle
+        document.getElementById('usePasswordLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            emailSection.style.display = 'none';
+            document.getElementById('passwordSection').style.display = 'block';
+            document.getElementById('passwordEmail').value = emailInput.value;
+            document.getElementById('password').focus();
+        });
+
+        document.getElementById('backToOtpLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('passwordSection').style.display = 'none';
+            emailSection.style.display = 'block';
+            document.getElementById('password').value = '';
+            document.getElementById('passwordFallback').style.display = 'none';
+        });
+
+        // Password login handler
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('passwordEmail').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!password) {
+                showAlert('Vui lòng nhập password', 'error');
+                return;
+            }
+
+            const loginPasswordBtn = document.getElementById('loginPasswordBtn');
+            setButtonLoading(loginPasswordBtn, true);
+
+            try {
+                const response = await fetch('/admin/login-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        email,
+                        password,
+                        remember_me: document.getElementById('rememberMe').checked
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1000);
+                } else {
+                    showAlert(data.message, 'error');
+                    document.getElementById('password').value = '';
+                    document.getElementById('password').focus();
+                }
+            } catch (error) {
+                showAlert('Lỗi kết nối. Vui lòng thử lại.', 'error');
+            } finally {
+                setButtonLoading(loginPasswordBtn, false);
+            }
         });
 
         // Auto-focus email input on page load

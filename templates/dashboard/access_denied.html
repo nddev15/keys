@@ -1,0 +1,51 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Truy Cập Bị Từ Chối - Admin Studio{% endblock %}
+
+{% block content %}
+<div style="display: flex; align-items: center; justify-content: center; min-height: calc(100vh - var(--header-height) - 56px);">
+    <div style="text-align: center; max-width: 500px;">
+        <div style="width: 120px; height: 120px; margin: 0 auto 32px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 40px rgba(239, 68, 68, 0.3); animation: errorShake 0.5s;">
+            <i class="fas fa-lock" style="font-size: 56px; color: #fff;"></i>
+        </div>
+        
+        <h1 style="font-size: 32px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px;">
+            Truy Cập Bị Từ Chối
+        </h1>
+        
+        <p style="font-size: 16px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.6;">
+            Bạn không có quyền truy cập vào trang này.<br>
+            Chỉ <strong style="color: #f59e0b;">Owner</strong> mới có thể truy cập chức năng này.
+        </p>
+        
+        <div style="padding: 20px; background: var(--glass-bg-light); border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 32px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-user-shield" style="font-size: 18px; color: #fff;"></i>
+                </div>
+                <div style="text-align: left;">
+                    <div style="font-size: 12px; color: var(--text-secondary);">Tài khoản hiện tại</div>
+                    <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ admin_email }}</div>
+                </div>
+            </div>
+            <div style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px;">
+                <i class="fas fa-user-shield" style="font-size: 12px; color: #fff;"></i>
+                <span style="font-size: 12px; font-weight: 600; color: #fff;">ADMIN</span>
+            </div>
+        </div>
+        
+        <button class="btn btn-primary ripple" onclick="window.location.href='/admin/dashboard/home'" style="padding: 14px 32px; font-size: 16px;">
+            <i class="fas fa-home"></i>
+            Về Trang Chủ
+        </button>
+    </div>
+</div>
+
+<style>
+    @keyframes errorShake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+    }
+</style>
+{% endblock %}

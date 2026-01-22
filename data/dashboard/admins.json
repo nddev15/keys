@@ -1,0 +1,30 @@
+{
+  "admins": {
+    "lewisvn1234@gmail.com": {
+      "role": "owner",
+      "permissions": {
+        "dashboard": true,
+        "keys": true,
+        "orders": true,
+        "prices": true,
+        "coupons": true,
+        "settings": true,
+        "analytics": true
+      },
+      "added_date": "2026-01-23T00:00:00Z"
+    },
+    "minhduc17a3@gmail.com": {
+      "role": "admin",
+      "permissions": {
+        "dashboard": true,
+        "keys": true,
+        "orders": true,
+        "prices": false,
+        "coupons": false,
+        "settings": false,
+        "analytics": true
+      },
+      "added_date": "2026-01-23T00:00:00Z"
+    }
+  }
+}

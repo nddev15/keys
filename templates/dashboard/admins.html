@@ -1,0 +1,335 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Quản Lý Admin - Admin Studio{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Quản Lý Admin</h1>
+
+<!-- Owner Info -->
+<div class="section" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.1)); border: 2px solid rgba(245, 158, 11, 0.3);">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="fas fa-crown" style="color: #f59e0b;"></i> Owner
+        </h2>
+    </div>
+    <div style="padding: 20px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
+                <i class="fas fa-crown" style="font-size: 28px; color: #fff;"></i>
+            </div>
+            <div>
+                <div style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                    {{ owner_email or 'Chưa cài đặt' }}
+                </div>
+                <div style="font-size: 13px; color: var(--text-secondary);">
+                    Quyền cao nhất - Quản lý toàn bộ hệ thống
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin List -->
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="fas fa-user-shield"></i> Danh Sách Admin
+        </h2>
+        <button class="btn btn-primary ripple" onclick="showAddAdminDialog()">
+            <i class="fas fa-plus"></i>
+            Thêm Admin
+        </button>
+    </div>
+    
+    <div class="table-container">
+        <table id="adminTable">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>Email</th>
+                    <th>Vai Trò</th>
+                    <th>Quyền Truy Cập</th>
+                    <th style="width: 180px;">Hành Động</th>
+                </tr>
+            </thead>
+            <tbody id="adminTableBody">
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
+                        <div>Đang tải...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let adminList = [];
+    let permissions = {};
+
+    // Load admin list
+    async function loadAdmins() {
+        try {
+            const response = await fetch('/admin/api/admins');
+            const data = await response.json();
+            
+            if (data.success) {
+                adminList = data.admins || [];
+                permissions = data.permissions || {};
+                renderAdminTable();
+            } else {
+                showErrorNotification('Lỗi: ' + data.message);
+            }
+        } catch (error) {
+            showErrorNotification('Lỗi kết nối: ' + error.message);
+        }
+    }
+
+    // Render admin table
+    function renderAdminTable() {
+        const tbody = document.getElementById('adminTableBody');
+        
+        if (adminList.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        <i class="fas fa-users-slash" style="font-size: 32px; margin-bottom: 12px; opacity: 0.5;"></i>
+                        <div>Chưa có admin nào</div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = adminList.map((email, index) => {
+            const perms = permissions[email] || {
+                dashboard: true,
+                keys: true,
+                orders: true,
+                prices: true,
+                coupons: true,
+                settings: false,
+                analytics: true
+            };
+            
+            const enabledPerms = Object.entries(perms).filter(([k, v]) => v).length;
+            const totalPerms = Object.keys(perms).length;
+            
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #2563eb); display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-user-shield" style="font-size: 16px; color: #fff;"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 500; color: var(--text-primary);">${email}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 12px;">
+                            <i class="fas fa-user-shield"></i> ADMIN
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="flex: 1; height: 8px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${(enabledPerms / totalPerms) * 100}%; height: 100%; background: linear-gradient(90deg, #10b981, #059669);"></div>
+                            </div>
+                            <span style="font-size: 13px; color: var(--text-secondary); min-width: 50px;">
+                                ${enabledPerms}/${totalPerms}
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary btn-sm ripple" onclick="editPermissions('${email}')">
+                                <i class="fas fa-key"></i> Phân Quyền
+                            </button>
+                            <button class="btn btn-danger btn-sm ripple" onclick="deleteAdmin('${email}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Show add admin dialog
+    function showAddAdminDialog() {
+        showInputDialog(
+            'Thêm Admin Mới',
+            'Nhập email admin...',
+            async (email) => {
+                if (!email) {
+                    showErrorNotification('Vui lòng nhập email!');
+                    return;
+                }
+                
+                // Validate email
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    showErrorNotification('Email không hợp lệ!');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/admin/api/admins', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email.toLowerCase() })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccessNotification('Đã thêm admin thành công!');
+                        loadAdmins();
+                    } else {
+                        showErrorNotification('Lỗi: ' + data.message);
+                    }
+                } catch (error) {
+                    showErrorNotification('Lỗi kết nối: ' + error.message);
+                }
+            }
+        );
+    }
+
+    // Delete admin
+    function deleteAdmin(email) {
+        showConfirmDialog(
+            'Xóa Admin',
+            `Bạn có chắc muốn xóa admin <strong>${email}</strong>?<br><br><span style="color: #ef4444;">Admin này sẽ không thể đăng nhập vào hệ thống nữa!</span>`,
+            async () => {
+                try {
+                    const response = await fetch(`/admin/api/admins/${encodeURIComponent(email)}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccessNotification('Đã xóa admin thành công!');
+                        loadAdmins();
+                    } else {
+                        showErrorNotification('Lỗi: ' + data.message);
+                    }
+                } catch (error) {
+                    showErrorNotification('Lỗi kết nối: ' + error.message);
+                }
+            }
+        );
+    }
+
+    // Edit permissions
+    function editPermissions(email) {
+        const perms = permissions[email] || {
+            dashboard: true,
+            keys: true,
+            orders: true,
+            prices: true,
+            coupons: true,
+            settings: false,
+            analytics: true
+        };
+        
+        const permLabels = {
+            dashboard: 'Tổng Quan',
+            keys: 'Quản Lý Keys',
+            orders: 'Đơn Hàng',
+            prices: 'Quản Lý Giá',
+            coupons: 'Mã Giảm Giá',
+            settings: 'Cài Đặt',
+            analytics: 'Thống Kê'
+        };
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'popup-overlay';
+        overlay.innerHTML = `
+            <div class="popup-container" style="max-width: 550px;">
+                <div class="liquidGlass-effect"></div>
+                <div class="liquidGlass-tint"></div>
+                <div class="liquidGlass-shine"></div>
+                <button class="popup-close-btn" onclick="closePopup()">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div style="position: relative; z-index: 1; padding: 32px;">
+                    <div style="text-align: center; margin-bottom: 24px;">
+                        <div style="width: 64px; height: 64px; margin: 0 auto 16px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);">
+                            <i class="fas fa-key" style="font-size: 28px; color: #fff;"></i>
+                        </div>
+                        <h3 style="margin-bottom: 8px; font-size: 20px; color: var(--text-primary);">Phân Quyền Admin</h3>
+                        <p style="color: var(--text-secondary); font-size: 14px;">${email}</p>
+                    </div>
+                    
+                    <div style="margin-bottom: 24px;">
+                        <div style="display: grid; gap: 12px;">
+                            ${Object.entries(permLabels).map(([key, label]) => `
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--glass-bg-light); border-radius: 12px; border: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <input type="checkbox" id="perm_${key}" ${perms[key] ? 'checked' : ''}>
+                                        <label for="perm_${key}" style="cursor: pointer; margin: 0; font-weight: 500; color: var(--text-primary);">
+                                            ${label}
+                                        </label>
+                                    </div>
+                                    <i class="fas fa-${key === 'dashboard' ? 'house' : key === 'keys' ? 'key' : key === 'orders' ? 'shopping-cart' : key === 'prices' ? 'tag' : key === 'coupons' ? 'ticket' : key === 'settings' ? 'gear' : 'chart-line'}" style="color: var(--text-secondary);"></i>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <small style="display: block; margin-top: 12px; color: var(--text-secondary); text-align: center;">
+                            <i class="fas fa-info-circle"></i> Admin có thể truy cập các trang được tick
+                        </small>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <button class="btn btn-secondary ripple" onclick="closePopup()">
+                            <i class="fas fa-times"></i> Hủy
+                        </button>
+                        <button class="btn btn-primary ripple" id="savePermissionsBtn">
+                            <i class="fas fa-save"></i> Lưu
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
+        
+        // Save permissions
+        document.getElementById('savePermissionsBtn').onclick = async () => {
+            const newPerms = {};
+            Object.keys(permLabels).forEach(key => {
+                newPerms[key] = document.getElementById(`perm_${key}`).checked;
+            });
+            
+            try {
+                const response = await fetch(`/admin/api/admins/${encodeURIComponent(email)}/permissions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ permissions: newPerms })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccessNotification('Đã cập nhật quyền thành công!');
+                    closePopup();
+                    loadAdmins();
+                } else {
+                    showErrorNotification('Lỗi: ' + data.message);
+                }
+            } catch (error) {
+                showErrorNotification('Lỗi kết nối: ' + error.message);
+            }
+        };
+    }
+
+    // Load on page load
+    loadAdmins();
+</script>
+{% endblock %}

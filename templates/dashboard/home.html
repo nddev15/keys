@@ -1,0 +1,156 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Dashboard - Admin Studio{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Muakey.cloud - Dashboard</h1>
+
+<!-- Statistics Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <h3><i class="fas fa-key"></i> Tổng Keys</h3>
+        <div class="stat-value">{{ data.stats.total_keys }}</div>
+        <div class="stat-label">Keys hiện có trong hệ thống</div>
+    </div>
+    
+    <div class="stat-card">
+        <h3><i class="fas fa-shopping-cart"></i> Đơn Hàng</h3>
+        <div class="stat-value">{{ data.stats.total_orders }}</div>
+        <div class="stat-label">
+            <span class="badge badge-success">{{ data.stats.paid_orders }} Paid</span>
+            <span class="badge badge-warning">{{ data.stats.pending_orders }} Pending</span>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <h3><i class="fas fa-ticket-alt"></i> Coupons</h3>
+        <div class="stat-value">{{ data.stats.total_coupons }}</div>
+        <div class="stat-label">Mã giảm giá hoạt động</div>
+    </div>
+    
+    <div class="stat-card">
+        <h3><i class="fas fa-server"></i> API Status</h3>
+        <div class="stat-value" id="apiStatus">
+            <div class="loading"></div>
+        </div>
+        <div class="stat-label">MBBank API</div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Thống Kê Nhanh</h2>
+    </div>
+    <div class="section-content">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;">
+            <div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Keys 1 Ngày</div>
+                <div style="font-size: 24px; font-weight: 500;">{{ data.key_data['1d'].count }}</div>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Keys 1 Tuần</div>
+                <div style="font-size: 24px; font-weight: 500;">{{ data.key_data['7d'].count }}</div>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Keys 1 Tháng</div>
+                <div style="font-size: 24px; font-weight: 500;">{{ data.key_data['30d'].count }}</div>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Keys 1 Mùa</div>
+                <div style="font-size: 24px; font-weight: 500;">{{ data.key_data['90d'].count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Orders -->
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Đơn Hàng Gần Đây</h2>
+        <a href="/admin/dashboard/orders" class="btn btn-secondary btn-sm">
+            Xem Tất Cả
+        </a>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>UID</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Thời Gian</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in data.orders[:10] %}
+                <tr>
+                    <td><code>{{ order.uid }}</code></td>
+                    <td>{{ order.email or '-' }}</td>
+                    <td>
+                        {% if order.status == 'Paid' %}
+                        <span class="badge badge-success">{{ order.status }}</span>
+                        {% else %}
+                        <span class="badge badge-warning">{{ order.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ order.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Hành Động Nhanh</h2>
+    </div>
+    <div class="section-content">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <a href="/admin/dashboard/keys" class="btn btn-primary">
+                <i class="fas fa-key"></i>
+                Quản Lý Keys
+            </a>
+            <a href="/admin/dashboard/orders" class="btn btn-primary">
+                <i class="fas fa-receipt"></i>
+                Quản Lý Đơn Hàng
+            </a>
+            <a href="/admin/dashboard/coupons" class="btn btn-primary">
+                <i class="fas fa-ticket-alt"></i>
+                Tạo Coupon
+            </a>
+            <a href="/admin/dashboard/settings" class="btn btn-secondary">
+                <i class="fas fa-cog"></i>
+                Cài Đặt
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Check API status
+    async function checkAPIStatus() {
+        try {
+            const response = await fetch('/admin/api/mbbank-status');
+            const data = await response.json();
+            const statusElement = document.getElementById('apiStatus');
+            
+            if (data.success && data.status === 'online') {
+                statusElement.innerHTML = '<span class="badge badge-success" style="font-size: 14px;">Online</span>';
+            } else {
+                statusElement.innerHTML = '<span class="badge badge-error" style="font-size: 14px;">Offline</span>';
+            }
+        } catch (error) {
+            document.getElementById('apiStatus').innerHTML = '<span class="badge badge-warning" style="font-size: 14px;">Error</span>';
+        }
+    }
+
+    // Load API status on page load
+    checkAPIStatus();
+    setInterval(checkAPIStatus, 5000);
+</script>
+{% endblock %}

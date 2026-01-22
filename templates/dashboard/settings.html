@@ -1,0 +1,374 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Cài Đặt - Admin Studio{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Cài Đặt</h1>
+
+<!-- Auto Cleanup Settings -->
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Tự Động Dọn Dẹp</h2>
+    </div>
+    <form id="cleanupSettingsForm">
+        <div class="form-group">
+            <label class="form-label">
+                Tự động xóa đơn hàng Pending sau (phút)
+                <span style="color: var(--text-secondary); font-weight: normal;">
+                    - Đơn hàng có trạng thái "Pending" sẽ tự động bị xóa sau khoảng thời gian này
+                </span>
+            </label>
+            <input type="number" class="form-control" id="cleanup_minutes" 
+                   value="{{ data.settings.cleanup_minutes or 15 }}" min="5" max="1440" required>
+            <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
+                Giá trị từ 5 đến 1440 phút (24 giờ)
+            </small>
+        </div>
+        
+        <div class="form-group">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <input type="checkbox" id="cleanup_enabled" 
+                       {{ 'checked' if data.settings.cleanup_enabled != False else '' }}>
+                <label class="form-label" for="cleanup_enabled" style="margin: 0; cursor: pointer;">
+                    Bật tự động dọon dẹp
+                </label>
+            </div>
+            <small style="color: var(--text-secondary); display: block; margin-top: 8px; margin-left: 36px;">
+                Tự động xóa các đơn hàng Pending sau khoảng thời gian đã cài đặt
+            </small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i>
+            Lưu Cài Đặt
+        </button>
+    </form>
+</div>
+
+<!-- Email Settings -->
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Cài Đặt Email</h2>
+    </div>
+    <form id="emailSettingsForm">
+        <div class="form-group">
+            <label class="form-label">
+                <i class="fas fa-crown" style="color: #f59e0b;"></i> Owner Email
+                <span class="badge" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 11px; margin-left: 8px;">OWNER</span>
+            </label>
+            <input type="email" class="form-control" id="owner_email" 
+                   value="{{ data.settings.owner_email or '' }}" 
+                   placeholder="owner@example.com" required>
+            <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
+                Email này có quyền cao nhất, có thể quản lý tất cả các chức năng và admin khác
+            </small>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">
+                <i class="fas fa-user-shield" style="color: #3b82f6;"></i> Email Quản Trị Được Phép Đăng Nhập
+                <span class="badge" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 11px; margin-left: 8px;">ADMIN</span>
+            </label>
+            <textarea class="form-control" id="authorized_emails" rows="5" 
+                      placeholder="admin@example.com&#10;manager@example.com&#10;Mỗi email một dòng">{{ data.settings.authorized_emails|join('\n') if data.settings.authorized_emails else '' }}</textarea>
+            <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
+                Các email trong danh sách này có thể đăng nhập vào trang quản trị nhưng có quyền hạn chế
+            </small>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">SendGrid API Key (Tùy Chọn)</label>
+            <input type="password" class="form-control" id="sendgrid_key" 
+                   placeholder="SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                   value="{{ data.settings.sendgrid_key or '' }}">
+            <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
+                Để trống nếu muốn in OTP ra console thay vì gửi email
+            </small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i>
+            Lưu Cài Đặt
+        </button>
+    </form>
+</div>
+
+<!-- Payment Settings -->
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Cài Đặt Thanh Toán</h2>
+    </div>
+    <form id="paymentSettingsForm">
+        <div class="form-group">
+            <label class="form-label">MBBank API URL</label>
+            <input type="url" class="form-control" id="mbbank_api" 
+                   value="{{ data.settings.mbbank_api or 'https://thueapibank.vn/historyapimbbankv2/' }}" 
+                   placeholder="https://thueapibank.vn/historyapimbbankv2/" required>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">MBBank Account Number</label>
+            <input type="text" class="form-control" id="mbbank_account" 
+                   value="{{ data.settings.mbbank_account or '' }}" 
+                   placeholder="0123456789" required>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">MBBank Account Name</label>
+            <input type="text" class="form-control" id="mbbank_name" 
+                   value="{{ data.settings.mbbank_name or '' }}" 
+                   placeholder="NGUYEN VAN A">
+        </div>
+        
+        <div class="form-group">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <input type="checkbox" id="payment_enabled" 
+                       {{ 'checked' if data.settings.payment_enabled != False else '' }}>
+                <label class="form-label" for="payment_enabled" style="margin: 0; cursor: pointer;">
+                    Bật chức năng thanh toán tự động
+                </label>
+            </div>
+            <small style="color: var(--text-secondary); display: block; margin-top: 8px; margin-left: 36px;">
+                Tự động kiểm tra và xác nhận thanh toán qua MBBank API
+            </small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i>
+            Lưu Cài Đặt
+        </button>
+    </form>
+</div>
+
+<!-- System Settings -->
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Cài Đặt Hệ Thống</h2>
+    </div>
+    <form id="systemSettingsForm">
+        <div class="form-group">
+            <label class="form-label">Site Name</label>
+            <input type="text" class="form-control" id="site_name" 
+                   value="{{ data.settings.site_name or 'VIP Service' }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">GitHub Sync (Tùy Chọn)</label>
+            <input type="text" class="form-control" id="github_repo" 
+                   value="{{ data.settings.github_repo or '' }}" 
+                   placeholder="username/repo">
+            <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
+                Đồng bộ dữ liệu lên GitHub repository
+            </small>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">GitHub Token</label>
+            <input type="password" class="form-control" id="github_token" 
+                   value="{{ data.settings.github_token or '' }}" 
+                   placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        </div>
+        
+        <div class="form-group">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <input type="checkbox" id="maintenance_mode" 
+                       {{ 'checked' if data.settings.maintenance_mode else '' }}>
+                <label class="form-label" for="maintenance_mode" style="margin: 0; cursor: pointer;">
+                    Chế độ bảo trì (tắt website tạm thời)
+                </label>
+            </div>
+            <small style="color: var(--text-secondary); display: block; margin-top: 8px; margin-left: 36px;">
+                Khi bật, người dùng sẽ không thể truy cập website
+            </small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i>
+            Lưu Cài Đặt
+        </button>
+    </form>
+</div>
+
+<!-- Danger Zone -->
+<div class="section" style="border: 2px solid #ef4444;">
+    <div class="section-header">
+        <h2 class="section-title" style="color: #ef4444;">
+            <i class="fas fa-exclamation-triangle"></i>
+            Vùng Nguy Hiểm
+        </h2>
+    </div>
+    <div style="padding: 20px;">
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+            Các hành động dưới đây không thể hoàn tác. Hãy cẩn thận!
+        </p>
+        
+        <button class="btn btn-danger" onclick="clearAllData()" style="margin-right: 12px;">
+            <i class="fas fa-trash"></i>
+            Xóa Tất Cả Dữ Liệu
+        </button>
+        
+        <button class="btn btn-danger" onclick="resetToDefaults()">
+            <i class="fas fa-undo"></i>
+            Khôi Phục Cài Đặt Mặc Định
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Cleanup Settings
+    document.getElementById('cleanupSettingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const settings = {
+            cleanup_minutes: parseInt(document.getElementById('cleanup_minutes').value),
+            cleanup_enabled: document.getElementById('cleanup_enabled').checked
+        };
+        
+        await saveSettings('cleanup', settings);
+    });
+
+    // Email Settings
+    document.getElementById('emailSettingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const emailsText = document.getElementById('authorized_emails').value;
+        const emails = emailsText.split('\n')
+            .map(e => e.trim())
+            .filter(e => e.length > 0);
+        
+        const ownerEmail = document.getElementById('owner_email').value.trim();
+        
+        if (!ownerEmail) {
+            showErrorNotification('Vui lòng nhập Owner Email!');
+            return;
+        }
+        
+        const settings = {
+            owner_email: ownerEmail,
+            authorized_emails: emails,
+            sendgrid_key: document.getElementById('sendgrid_key').value || null
+        };
+        
+        await saveSettings('email', settings);
+    });
+
+    // Payment Settings
+    document.getElementById('paymentSettingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const settings = {
+            mbbank_api: document.getElementById('mbbank_api').value,
+            mbbank_account: document.getElementById('mbbank_account').value,
+            mbbank_name: document.getElementById('mbbank_name').value,
+            payment_enabled: document.getElementById('payment_enabled').checked
+        };
+        
+        await saveSettings('payment', settings);
+    });
+
+    // System Settings
+    document.getElementById('systemSettingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const settings = {
+            site_name: document.getElementById('site_name').value,
+            github_repo: document.getElementById('github_repo').value || null,
+            github_token: document.getElementById('github_token').value || null,
+            maintenance_mode: document.getElementById('maintenance_mode').checked
+        };
+        
+        await saveSettings('system', settings);
+    });
+
+    async function saveSettings(category, settings) {
+        try {
+            const response = await fetch('/admin/api/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ category, settings })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showSuccessNotification('Lưu cài đặt thành công!');
+            } else {
+                showErrorNotification('Lỗi: ' + data.message);
+            }
+        } catch (error) {
+            showErrorNotification('Lỗi kết nối: ' + error.message);
+        }
+    }
+
+    async function clearAllData() {
+        showConfirmDialog(
+            'CẢNH BÁO: XÓA TẤT CẢ DỮ LIỆU',
+            'Hành động này sẽ xóa TẤT CẢ dữ liệu bao gồm:<br>' +
+            '- Tất cả đơn hàng<br>' +
+            '- Tất cả coupon<br>' +
+            '- Tất cả key<br>' +
+            '- Tất cả người dùng<br><br>' +
+            'Bạn có CHẮC CHẮN muốn tiếp tục?',
+            async () => {
+                // Show input dialog for confirmation
+                showInputDialog(
+                    'Xác Nhận Xóa',
+                    'Nhập "XOA TAT CA" để xác nhận:',
+                    async (value) => {
+                        if (value !== 'XOA TAT CA') {
+                            showInfoNotification('Hủy thao tác');
+                            return;
+                        }
+                        
+                        try {
+                            const response = await fetch('/admin/api/clear-all-data', {
+                                method: 'POST'
+                            });
+                            
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                showSuccessNotification('Đã xóa tất cả dữ liệu!');
+                                setTimeout(() => location.reload(), 2000);
+                            } else {
+                                showErrorNotification('Lỗi: ' + data.message);
+                            }
+                        } catch (error) {
+                            showErrorNotification('Lỗi kết nối: ' + error.message);
+                        }
+                    }
+                );
+            }
+        );
+    }
+
+    async function resetToDefaults() {
+        showConfirmDialog(
+            'Khôi Phục Cài Đặt Mặc Định',
+            'Bạn có chắc chắn muốn khôi phục tất cả cài đặt về mặc định?',
+            async () => {
+                try {
+                    const response = await fetch('/admin/api/reset-settings', {
+                        method: 'POST'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccessNotification('Đã khôi phục cài đặt mặc định!');
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        showErrorNotification('Lỗi: ' + data.message);
+                    }
+                } catch (error) {
+                    showErrorNotification('Lỗi kết nối: ' + error.message);
+                }
+            }
+        );
+    }
+</script>
+{% endblock %}

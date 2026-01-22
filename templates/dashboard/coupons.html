@@ -1,0 +1,386 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Quản Lý Coupon - Admin Studio{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Quản Lý Coupon</h1>
+
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Danh Sách Coupon</h2>
+        <button class="btn btn-primary" onclick="showAddCouponModal()">
+            <i class="fas fa-plus"></i>
+            Thêm Coupon
+        </button>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Mã</th>
+                    <th>Loại</th>
+                    <th>Giảm Giá</th>
+                    <th>Đã Sử Dụng / Giới Hạn</th>
+                    <th>Hạn Sử Dụng</th>
+                    <th>Hành Động</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if data.coupons %}
+                    {% for coupon_code, coupon in data.coupons.items() %}
+                    <tr id="coupon-{{ coupon_code }}">
+                        <td>
+                            <strong>{{ coupon_code }}</strong>
+                        </td>
+                        <td>
+                            {% if coupon.type == 'limited' %}
+                                <span class="badge badge-warning">Giới Hạn</span>
+                            {% else %}
+                                <span class="badge badge-success">Không Giới Hạn</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ coupon.discount }}%</strong></td>
+                        <td>
+                            {% if coupon.type == 'limited' %}
+                                {{ coupon.used|default(0) }}/{{ coupon.max_uses|default(0) }}
+                            {% else %}
+                                {{ coupon.used|default(0) }}/∞
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if coupon.expires %}
+                                {{ coupon.expires }}
+                            {% else %}
+                                <span class="badge badge-info">Không Hết Hạn</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-secondary" 
+                                    data-code="{{ coupon_code }}"
+                                    data-discount="{{ coupon.discount }}"
+                                    data-type="{{ coupon.type }}"
+                                    data-max-uses="{{ coupon.max_uses if coupon.type == 'limited' else 0 }}"
+                                    data-expires="{{ coupon.expires if coupon.expires else '' }}"
+                                    onclick="editCouponFromData(this)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteCoupon('{{ coupon_code }}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-ticket-alt" style="font-size: 48px; color: var(--border-color); margin-bottom: 16px;"></i>
+                            <p style="color: var(--text-secondary);">Chưa có coupon nào</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Coupon Modal -->
+<div class="modal" id="addCouponModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Thêm Coupon Mới</h3>
+            <button class="modal-close" onclick="closeAddCouponModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="addCouponForm">
+            <div class="modal-body">
+                <div id="addCouponAlert"></div>
+                
+                <div class="form-group">
+                    <label class="form-label">Mã Coupon <span style="color: #ef4444;">*</span></label>
+                    <input type="text" class="form-control" id="coupon_code" 
+                           placeholder="VD: SUMMER2024" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Giảm Giá (%) <span style="color: #ef4444;">*</span></label>
+                    <input type="number" class="form-control" id="discount" 
+                           placeholder="VD: 20" min="1" max="100" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Loại Coupon <span style="color: #ef4444;">*</span></label>
+                    <select class="form-control" id="coupon_type" onchange="toggleMaxUses()" required>
+                        <option value="limited">Giới Hạn</option>
+                        <option value="unlimited">Không Giới Hạn</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="max_uses_group">
+                    <label class="form-label">Số Lần Sử Dụng Tối Đa</label>
+                    <input type="number" class="form-control" id="max_uses" 
+                           placeholder="VD: 100" min="1" value="100">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Hạn Sử Dụng (Tùy Chọn)</label>
+                    <input type="date" class="form-control" id="expires">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAddCouponModal()">
+                    Hủy
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    Thêm Coupon
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Coupon Modal -->
+<div class="modal" id="editCouponModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Chỉnh Sửa Coupon</h3>
+            <button class="modal-close" onclick="closeEditCouponModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="editCouponForm">
+            <div class="modal-body">
+                <div id="editCouponAlert"></div>
+                
+                <input type="hidden" id="edit_coupon_code">
+                
+                <div class="form-group">
+                    <label class="form-label">Mã Coupon</label>
+                    <input type="text" class="form-control" id="edit_code" disabled>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Giảm Giá (%) <span style="color: #ef4444;">*</span></label>
+                    <input type="number" class="form-control" id="edit_discount" 
+                           min="1" max="100" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Loại Coupon <span style="color: #ef4444;">*</span></label>
+                    <select class="form-control" id="edit_coupon_type" onchange="toggleEditMaxUses()" required>
+                        <option value="limited">Giới Hạn</option>
+                        <option value="unlimited">Không Giới Hạn</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="edit_max_uses_group">
+                    <label class="form-label">Số Lần Sử Dụng Tối Đa</label>
+                    <input type="number" class="form-control" id="edit_max_uses" 
+                           min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Hạn Sử Dụng (Tùy Chọn)</label>
+                    <input type="date" class="form-control" id="edit_expires">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeEditCouponModal()">
+                    Hủy
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Lưu Thay Đổi
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function showAddCouponModal() {
+        document.getElementById('addCouponModal').classList.add('active');
+    }
+
+    function closeAddCouponModal() {
+        document.getElementById('addCouponModal').classList.remove('active');
+        document.getElementById('addCouponForm').reset();
+        document.getElementById('addCouponAlert').innerHTML = '';
+    }
+
+    function showEditCouponModal() {
+        document.getElementById('editCouponModal').classList.add('active');
+    }
+
+    function closeEditCouponModal() {
+        document.getElementById('editCouponModal').classList.remove('active');
+        document.getElementById('editCouponForm').reset();
+        document.getElementById('editCouponAlert').innerHTML = '';
+    }
+
+    function toggleMaxUses() {
+        const type = document.getElementById('coupon_type').value;
+        const maxUsesGroup = document.getElementById('max_uses_group');
+        
+        if (type === 'limited') {
+            maxUsesGroup.style.display = 'block';
+            document.getElementById('max_uses').required = true;
+        } else {
+            maxUsesGroup.style.display = 'none';
+            document.getElementById('max_uses').required = false;
+        }
+    }
+
+    function toggleEditMaxUses() {
+        const type = document.getElementById('edit_coupon_type').value;
+        const maxUsesGroup = document.getElementById('edit_max_uses_group');
+        
+        if (type === 'limited') {
+            maxUsesGroup.style.display = 'block';
+            document.getElementById('edit_max_uses').required = true;
+        } else {
+            maxUsesGroup.style.display = 'none';
+            document.getElementById('edit_max_uses').required = false;
+        }
+    }
+
+    function editCoupon(code, discount, type, maxUses, expires) {
+        document.getElementById('edit_coupon_code').value = code;
+        document.getElementById('edit_code').value = code;
+        document.getElementById('edit_discount').value = discount;
+        document.getElementById('edit_coupon_type').value = type;
+        document.getElementById('edit_max_uses').value = maxUses || 100;
+        document.getElementById('edit_expires').value = expires || '';
+        
+        toggleEditMaxUses();
+        showEditCouponModal();
+    }
+
+    function editCouponFromData(button) {
+        const code = button.dataset.code;
+        const discount = button.dataset.discount;
+        const type = button.dataset.type;
+        const maxUses = button.dataset.maxUses;
+        const expires = button.dataset.expires;
+        
+        editCoupon(code, discount, type, maxUses, expires);
+    }
+
+    async function deleteCoupon(code) {
+        if (!confirm(`Bạn có chắc chắn muốn xóa coupon "${code}"?`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/admin/api/coupons/${code}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById(`coupon-${code}`).remove();
+                showNotification('Xóa coupon thành công!', 'success');
+            } else {
+                showNotification('Lỗi: ' + data.message, 'error');
+            }
+        } catch (error) {
+            showNotification('Lỗi kết nối: ' + error.message, 'error');
+        }
+    }
+
+    document.getElementById('addCouponForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const couponData = {
+            code: document.getElementById('coupon_code').value.toUpperCase(),
+            discount: parseInt(document.getElementById('discount').value),
+            type: document.getElementById('coupon_type').value,
+            expires: document.getElementById('expires').value || null
+        };
+        
+        if (couponData.type === 'limited') {
+            couponData.max_uses = parseInt(document.getElementById('max_uses').value);
+        }
+        
+        try {
+            const response = await fetch('/admin/api/coupons', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(couponData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert('addCouponAlert', 'Thêm coupon thành công!', 'success');
+                setTimeout(() => {
+                    closeAddCouponModal();
+                    location.reload();
+                }, 1500);
+            } else {
+                showAlert('addCouponAlert', 'Lỗi: ' + data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('addCouponAlert', 'Lỗi kết nối: ' + error.message, 'error');
+        }
+    });
+
+    document.getElementById('editCouponForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const code = document.getElementById('edit_coupon_code').value;
+        const couponData = {
+            discount: parseInt(document.getElementById('edit_discount').value),
+            type: document.getElementById('edit_coupon_type').value,
+            expires: document.getElementById('edit_expires').value || null
+        };
+        
+        if (couponData.type === 'limited') {
+            couponData.max_uses = parseInt(document.getElementById('edit_max_uses').value);
+        }
+        
+        try {
+            const response = await fetch(`/admin/api/coupons/${code}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(couponData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert('editCouponAlert', 'Cập nhật coupon thành công!', 'success');
+                setTimeout(() => {
+                    closeEditCouponModal();
+                    location.reload();
+                }, 1500);
+            } else {
+                showAlert('editCouponAlert', 'Lỗi: ' + data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('editCouponAlert', 'Lỗi kết nối: ' + error.message, 'error');
+        }
+    });
+
+    // Close modals when clicking outside
+    document.getElementById('addCouponModal').addEventListener('click', (e) => {
+        if (e.target.id === 'addCouponModal') {
+            closeAddCouponModal();
+        }
+    });
+
+    document.getElementById('editCouponModal').addEventListener('click', (e) => {
+        if (e.target.id === 'editCouponModal') {
+            closeEditCouponModal();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Quản Lý Giá - Admin Studio{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Quản Lý Giá</h1>
+
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Bảng Giá Hiện Tại</h2>
+        <button class="btn btn-primary" onclick="showEditPricesModal()">
+            <i class="fas fa-edit"></i>
+            Chỉnh Sửa Giá
+        </button>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Gói</th>
+                    <th>Tên</th>
+                    <th>Giá (VND)</th>
+                    <th>Số Key Hiện Có</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key, price in data.prices.items() %}
+                <tr>
+                    <td><span class="badge badge-info">{{ key }}</span></td>
+                    <td>{{ price.label }}</td>
+                    <td><strong style="font-size: 16px;">{{ "{:,}".format(price.amount) }}đ</strong></td>
+                    <td>{{ data.key_data[key].count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Edit Prices Modal -->
+<div class="modal" id="editPricesModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Chỉnh Sửa Giá</h3>
+            <button class="modal-close" onclick="closeEditPricesModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="editPricesForm">
+            <div class="modal-body">
+                <div id="editPricesAlert"></div>
+                
+                {% for key, price in data.prices.items() %}
+                <div class="form-group">
+                    <label class="form-label">{{ price.label }} ({{ key }})</label>
+                    <input type="number" class="form-control" id="price_{{ key }}" 
+                           value="{{ price.amount }}" min="0" step="1000" required>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeEditPricesModal()">
+                    Hủy
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Lưu Thay Đổi
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function showEditPricesModal() {
+        document.getElementById('editPricesModal').classList.add('active');
+    }
+
+    function closeEditPricesModal() {
+        document.getElementById('editPricesModal').classList.remove('active');
+        document.getElementById('editPricesAlert').innerHTML = '';
+    }
+
+    document.getElementById('editPricesForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const prices = {};
+        const inputs = document.querySelectorAll('[id^="price_"]');
+        
+        inputs.forEach(input => {
+            const key = input.id.replace('price_', '');
+            const amount = parseInt(input.value);
+            
+            // Get label from original data
+            const label = {
+                '1d': '1 Ngày',
+                '7d': '1 Tuần',
+                '30d': '1 Tháng',
+                '90d': '1 Mùa'
+            }[key];
+            
+            prices[key] = {
+                label: label,
+                amount: amount,
+                currency: 'VND'
+            };
+        });
+        
+        try {
+            const response = await fetch('/admin/api/prices', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ prices })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert('editPricesAlert', 'Cập nhật giá thành công!', 'success');
+                setTimeout(() => {
+                    closeEditPricesModal();
+                    location.reload();
+                }, 1500);
+            } else {
+                showAlert('editPricesAlert', 'Lỗi: ' + data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('editPricesAlert', 'Lỗi kết nối: ' + error.message, 'error');
+        }
+    });
+
+    // Close modal when clicking outside
+    document.getElementById('editPricesModal').addEventListener('click', (e) => {
+        if (e.target.id === 'editPricesModal') {
+            closeEditPricesModal();
+        }
+    });
+</script>
+{% endblock %}
