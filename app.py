@@ -846,8 +846,12 @@ def send_key(email, key, uid, period="30 day"):
 # =================== Admin Dashboard Functions ===================
 # OTP storage: {email: {'code': '123456', 'expires': datetime, 'attempts': 0}}
 otp_storage = {}
+# Email send tracking: {email: {'count': 5, 'reset_time': datetime, 'cooldown_until': datetime}}
+email_send_tracking = {}
 OTP_EXPIRY_MINUTES = 10
 MAX_OTP_ATTEMPTS = 5
+EMAIL_SEND_LIMIT = 5
+EMAIL_COOLDOWN_HOURS = 1
 
 def load_auth_config():
     """Load authorized emails from auth.json"""
@@ -975,7 +979,7 @@ def send_otp_email(email, otp):
             subject='Mã xác thực Admin Dashboard',
             html_content=f'''
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">Mã xác thực đăng nhập</h2>
+                <h2 style="color: #333;">Mã xác thực đăng nhập Admin Dashboard</h2>
                 <p>Mã OTP của bạn là:</p>
                 <div style="background: #f0f0f0; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
                     {otp}
@@ -1023,6 +1027,48 @@ def verify_otp(email, otp_code):
     # Success - remove OTP
     del otp_storage[email]
     return True, "OTP verified"
+
+def check_email_send_cooldown(email):
+    """Check if email is in cooldown period"""
+    now = datetime.now()
+    
+    if email not in email_send_tracking:
+        return False, ""
+    
+    tracking = email_send_tracking[email]
+    
+    # Check if in cooldown period
+    if 'cooldown_until' in tracking and now < tracking['cooldown_until']:
+        remaining = tracking['cooldown_until'] - now
+        minutes = int(remaining.total_seconds() / 60)
+        return True, f"Vui lòng đợi {minutes} phút trước khi gửi lại email"
+    
+    # Reset count if more than 1 hour passed
+    if 'reset_time' in tracking and now > tracking['reset_time']:
+        tracking['count'] = 0
+        tracking['reset_time'] = now + timedelta(hours=1)
+    
+    return False, ""
+
+def update_email_send_tracking(email):
+    """Update email send count and set cooldown if needed"""
+    now = datetime.now()
+    
+    if email not in email_send_tracking:
+        email_send_tracking[email] = {
+            'count': 0,
+            'reset_time': now + timedelta(hours=1)
+        }
+    
+    tracking = email_send_tracking[email]
+    tracking['count'] += 1
+    
+    # If reached limit, set cooldown
+    if tracking['count'] >= EMAIL_SEND_LIMIT:
+        tracking['cooldown_until'] = now + timedelta(hours=EMAIL_COOLDOWN_HOURS)
+        print(f"[EMAIL COOLDOWN] {email} reached limit, cooldown until {tracking['cooldown_until']}")
+    
+    print(f"[EMAIL TRACKING] {email}: {tracking['count']}/{EMAIL_SEND_LIMIT} emails sent")
 
 def require_admin_auth(f):
     """Decorator to require admin authentication"""
@@ -1709,6 +1755,44 @@ def debug_check_email(email):
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
+@app.route("/debug/email-tracking", methods=["GET"])
+def debug_email_tracking():
+    """Debug endpoint: Check email send tracking status"""
+    try:
+        now = datetime.now()
+        tracking_status = {}
+        
+        for email, data in email_send_tracking.items():
+            # Calculate remaining cooldown time
+            cooldown_remaining = 0
+            if 'cooldown_until' in data and now < data['cooldown_until']:
+                cooldown_remaining = int((data['cooldown_until'] - now).total_seconds() / 60)
+            
+            tracking_status[email] = {
+                "send_count": data.get('count', 0),
+                "limit": EMAIL_SEND_LIMIT,
+                "in_cooldown": cooldown_remaining > 0,
+                "cooldown_remaining_minutes": cooldown_remaining,
+                "reset_time": data.get('reset_time').strftime("%Y-%m-%d %H:%M:%S") if data.get('reset_time') else None,
+                "cooldown_until": data.get('cooldown_until').strftime("%Y-%m-%d %H:%M:%S") if data.get('cooldown_until') else None
+            }
+        
+        return jsonify({
+            "status": "ok",
+            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "email_tracking": tracking_status,
+            "config": {
+                "send_limit": EMAIL_SEND_LIMIT,
+                "cooldown_hours": EMAIL_COOLDOWN_HOURS
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+
 # =================== Admin Dashboard Routes ===================
 @app.route("/admin/login")
 def admin_login():
@@ -1731,6 +1815,11 @@ def admin_send_otp():
         if not is_email_authorized(email):
             return jsonify({'success': False, 'message': 'Email không có quyền truy cập'})
         
+        # Check cooldown period
+        is_cooldown, cooldown_message = check_email_send_cooldown(email)
+        if is_cooldown:
+            return jsonify({'success': False, 'message': cooldown_message})
+        
         # Generate OTP
         otp = generate_otp()
         otp_storage[email] = {
@@ -1743,6 +1832,9 @@ def admin_send_otp():
         success, message = send_otp_email(email, otp)
         
         if success:
+            # Update send tracking only if email sent successfully
+            update_email_send_tracking(email)
+            
             return jsonify({
                 'success': True,
                 'message': f'Mã OTP đã được gửi đến {email}',
@@ -1797,27 +1889,32 @@ def admin_verify_otp():
 
 @app.route("/admin/login-password", methods=["POST"])
 def admin_login_password():
-    """Login with password (fallback when OTP fails)"""
+    """Login with password only (no email required)"""
     try:
         data = request.get_json()
-        email = data.get('email', '').strip().lower()
         password = data.get('password', '').strip()
         remember_me = data.get('remember_me', False)
         
-        if not email or not password:
-            return jsonify({'success': False, 'message': 'Email và Password không được để trống'})
-        
-        # Check if email is authorized
-        if not is_email_authorized(email):
-            return jsonify({'success': False, 'message': 'Email không có quyền truy cập'})
+        if not password:
+            return jsonify({'success': False, 'message': 'Password không được để trống'})
         
         # Load password_access from auth.json
         config = load_auth_config()
         password_access = config.get('password_access', {})
         
-        # Verify password
-        if email not in password_access or password_access[email] != password:
+        # Find email by password
+        email = None
+        for user_email, user_password in password_access.items():
+            if user_password == password:
+                email = user_email
+                break
+        
+        if not email:
             return jsonify({'success': False, 'message': 'Password không chính xác'})
+        
+        # Check if email is authorized (double check)
+        if not is_email_authorized(email):
+            return jsonify({'success': False, 'message': 'Tài khoản không có quyền truy cập'})
         
         # Create session
         session['admin_email'] = email

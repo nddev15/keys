@@ -519,18 +519,7 @@
         <div class="password-section" id="passwordSection" style="display: none;">
             <form id="passwordForm">
                 <div class="form-group">
-                    <label for="passwordEmail">Email quản trị</label>
-                    <input 
-                        type="email" 
-                        id="passwordEmail" 
-                        placeholder="admin@example.com"
-                        required
-                        readonly
-                        style="background: rgba(255, 255, 255, 0.2); cursor: not-allowed;"
-                    >
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
+                    <label for="password">Password Admin</label>
                     <input 
                         type="password" 
                         id="password" 
@@ -539,6 +528,20 @@
                         autocomplete="current-password"
                     >
                     <div id="passwordError" class="form-error" style="display: none;"></div>
+                </div>
+                <div class="form-group remember-group">
+                    <label class="remember-label" for="rememberMePassword">
+                        <input type="checkbox" id="rememberMePassword" class="remember-checkbox" />
+                        <i class="fas fa-check-circle remember-success-icon"></i>
+                        <span class="remember-text">
+                            <i class="fas fa-shield-alt"></i>
+                            Ghi nhớ đăng nhập trong 60 ngày
+                        </span>
+                    </label>
+                    <small class="remember-info">
+                        <i class="fas fa-info-circle"></i>
+                        Chỉ sử dụng trên thiết bị cá nhân
+                    </small>
                 </div>
                 <button type="submit" class="btn btn-primary" id="loginPasswordBtn">
                     Đăng nhập
@@ -768,7 +771,7 @@
                 if (data.success) {
                     showAlert(data.message, 'success');
                     setTimeout(() => {
-                        window.location.href = data.redirect;
+                        window.location.href = data.redirect || '/admin/dashboard';
                     }, 1000);
                 } else {
                     showAlert(data.message, 'error');
@@ -825,7 +828,6 @@
             e.preventDefault();
             emailSection.style.display = 'none';
             document.getElementById('passwordSection').style.display = 'block';
-            document.getElementById('passwordEmail').value = emailInput.value;
             document.getElementById('password').focus();
         });
 
@@ -840,8 +842,8 @@
         document.getElementById('passwordForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const email = document.getElementById('passwordEmail').value.trim();
             const password = document.getElementById('password').value.trim();
+            const rememberMe = document.getElementById('rememberMePassword').checked;
             
             if (!password) {
                 showAlert('Vui lòng nhập password', 'error');
@@ -858,9 +860,8 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ 
-                        email,
                         password,
-                        remember_me: document.getElementById('rememberMe').checked
+                        remember_me: rememberMe
                     })
                 });
 
@@ -869,7 +870,7 @@
                 if (data.success) {
                     showAlert(data.message, 'success');
                     setTimeout(() => {
-                        window.location.href = data.redirect;
+                        window.location.href = data.redirect || '/admin/dashboard';
                     }, 1000);
                 } else {
                     showAlert(data.message, 'error');

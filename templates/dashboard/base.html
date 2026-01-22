@@ -398,7 +398,30 @@
             justify-content: center;
             font-size: 14px;
             color: var(--primary-color);
+            flex-shrink: 0;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .user-email {
+            font-size: 14px;
             font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-role {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            opacity: 0.8;
         }
 
         .user-email {
@@ -1755,7 +1778,226 @@
             transition: all 0.3s ease;
         }
 
+        /* Collapsible Customization Panel */
+        .customization-toggle {
+            padding: 10px 14px;
+            background: var(--glass-bg-light);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 4px var(--shadow-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .customization-toggle:hover {
+            background: var(--hover-bg);
+        }
+
+        .customization-toggle i {
+            font-size: 16px;
+            transition: transform 0.3s ease;
+        }
+
+        .customization-toggle.active i {
+            transform: rotate(180deg);
+        }
+
+        .customization-panel {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--glass-bg-strong);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            min-width: 280px;
+            max-width: 320px;
+            padding: 16px;
+            transform: translateY(-10px);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1001;
+        }
+
+        .customization-panel.active {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+        }
+
+        .panel-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .panel-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-section-title i {
+            font-size: 14px;
+            color: var(--primary-color);
+        }
+
+        .panel-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .panel-btn {
+            padding: 10px 12px;
+            background: var(--glass-bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+
+        .panel-btn:hover {
+            background: var(--hover-bg);
+            transform: translateY(-1px);
+        }
+
+        .panel-btn i {
+            font-size: 14px;
+            color: var(--primary-color);
+            width: 16px;
+            text-align: center;
+        }
+
         /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 16px;
+            }
+
+            .header-left .menu-btn {
+                display: flex;
+            }
+
+            .header-left .sidebar-toggle-btn {
+                display: none;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header-content {
+                padding: 0 16px;
+            }
+
+            .header-right {
+                gap: 8px;
+            }
+
+            .user-info {
+                padding: 6px 10px;
+                gap: 8px;
+            }
+
+            .user-details {
+                display: none;
+            }
+
+            .customization-panel {
+                right: -16px;
+                left: 16px;
+                min-width: auto;
+                max-width: none;
+            }
+
+            .customization-toggle span {
+                display: none;
+            }
+
+            .customization-toggle {
+                padding: 10px;
+                min-width: 42px;
+                justify-content: center;
+            }
+
+            .logout-btn span {
+                display: none;
+            }
+
+            .logout-btn {
+                padding: 10px;
+                min-width: 42px;
+                justify-content: center;
+            }
+
+            .user-avatar {
+                width: 28px;
+                height: 28px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .section {
+                padding: 20px 16px;
+                margin: 16px;
+                border-radius: 16px;
+            }
+
+            .section-header {
+                margin-bottom: 16px;
+            }
+
+            .section-title {
+                font-size: 18px;
+            }
+
+            .header-content {
+                padding: 0 12px;
+            }
+
+            .main-content {
+                padding: 12px;
+            }
+        }
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -1819,23 +2061,67 @@
             </div>
             
             <div class="header-right">
-                <button class="font-customize-btn" onclick="openFontCustomization()">
-                    <i class="fas fa-font"></i>
-                    <span>Font</span>
-                </button>
-                <button class="bg-customize-btn" onclick="openBackgroundGallery()">
-                    <i class="fas fa-image"></i>
-                    <span>Background</span>
-                </button>
-                <button class="theme-toggle ripple" onclick="toggleTheme()">
-                    <i class="fas fa-moon" id="theme-icon"></i>
-                    <span id="theme-text">Dark</span>
-                </button>
+                <div style="position: relative;">
+                    <button class="customization-toggle" onclick="toggleCustomizationPanel()">
+                        <i class="fas fa-cog"></i>
+                        <span>Tùy Chỉnh</span>
+                    </button>
+                    
+                    <div class="customization-panel" id="customizationPanel">
+                        <div class="panel-section">
+                            <div class="panel-section-title">
+                                <i class="fas fa-font"></i>
+                                Giao Diện
+                            </div>
+                            <div class="panel-buttons">
+                                <button class="panel-btn" onclick="openFontCustomization()">
+                                    <i class="fas fa-font"></i>
+                                    Tùy chỉnh Font
+                                </button>
+                                <button class="panel-btn" onclick="openBackgroundGallery()">
+                                    <i class="fas fa-image"></i>
+                                    Đổi Background
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-section">
+                            <div class="panel-section-title">
+                                <i class="fas fa-palette"></i>
+                                Chủ Đề
+                            </div>
+                            <div class="panel-buttons">
+                                <button class="panel-btn" onclick="setTheme('light')">
+                                    <i class="fas fa-sun"></i>
+                                    Light Mode
+                                </button>
+                                <button class="panel-btn" onclick="setTheme('dark')">
+                                    <i class="fas fa-moon"></i>
+                                    Dark Mode  
+                                </button>
+                                <button class="panel-btn" onclick="setTheme('mixed')">
+                                    <i class="fas fa-adjust"></i>
+                                    Mixed Mode
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <a href="/admin/dashboard/user-settings" class="user-info ripple" style="text-decoration: none; cursor: pointer;">
                     <div class="user-avatar" id="userAvatarDisplay">
                         <i class="fas fa-user"></i>
                     </div>
-                    <span class="user-email" id="userDisplayName">{{ admin_email }}</span>
+                    <div class="user-details">
+                        <span class="user-email" id="userDisplayName">{{ admin_email }}</span>
+                        <span class="user-role">
+                            {% if is_owner %}
+                                - Owner
+                            {% else %}
+                                - Admin
+                            {% endif %}
+                        </span>
+                    </div>
                 </a>
                 <a href="/admin/logout" class="logout-btn ripple">
                     <i class="fas fa-right-from-bracket"></i>
@@ -2076,22 +2362,43 @@
             localStorage.setItem('dashboard-theme', newTheme);
         }
 
-        function applyTheme(theme) {
-            document.body.setAttribute('data-theme', theme);
-            const themeIcon = document.getElementById('theme-icon');
-            const themeText = document.getElementById('theme-text');
-            
-            if (theme === 'light') {
-                themeIcon.className = 'fas fa-moon';
-                themeText.textContent = 'Dark';
-            } else if (theme === 'dark') {
-                themeIcon.className = 'fas fa-adjust';
-                themeText.textContent = 'Mixed';
-            } else if (theme === 'mixed') {
-                themeIcon.className = 'fas fa-sun';
-                themeText.textContent = 'Light';
+        function setTheme(theme) {
+            if (themes.includes(theme)) {
+                currentThemeIndex = themes.indexOf(theme);
+                applyTheme(theme);
+                localStorage.setItem('dashboard-theme', theme);
+                toggleCustomizationPanel(); // Close panel after selection
             }
         }
+
+        function applyTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+        }
+
+        // Customization Panel Management
+        function toggleCustomizationPanel() {
+            const panel = document.getElementById('customizationPanel');
+            const toggle = document.querySelector('.customization-toggle');
+            
+            if (panel.classList.contains('active')) {
+                panel.classList.remove('active');
+                toggle.classList.remove('active');
+            } else {
+                panel.classList.add('active');
+                toggle.classList.add('active');
+            }
+        }
+
+        // Close panel when clicking outside
+        document.addEventListener('click', function(e) {
+            const panel = document.getElementById('customizationPanel');
+            const toggle = document.querySelector('.customization-toggle');
+            
+            if (panel && toggle && !panel.contains(e.target) && !toggle.contains(e.target)) {
+                panel.classList.remove('active');
+                toggle.classList.remove('active');
+            }
+        });
 
         // Initialize theme on page load
         initTheme();
