@@ -1,9 +1,3 @@
-def get_client_ip():
-    if request.headers.get('X-Forwarded-For'):
-        ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
-    else:
-        ip = request.remote_addr
-    return ip
 import os
 import sqlite3
 import string
@@ -292,7 +286,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 DB_FILE = "orders.db"
 AUTH_FILE = "data/dashboard/auth.json"
 
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "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")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@muakey.cloud")
 
 MB_API_URL = "https://thueapibank.vn/historyapimbbankv2/07bf677194ae4972714f01a3abf58c5f"
@@ -312,30 +306,20 @@ def manage_session():
     # Check admin session
     if 'admin_email' in session:
         admin_email = session.get('admin_email')
+        
         # Verify email is still authorized
         if not admin_email or not is_email_authorized(admin_email):
             session.pop('admin_email', None)
-            session.pop('session_id', None)
             if request.endpoint and request.endpoint.startswith('admin'):
                 return redirect(url_for('admin_login'))
-        # Check IP binding
-        config = load_auth_config()
-        sessions_data = config.get('sessions', {})
-        ip = get_client_ip()
-        session_id = session.get('session_id')
-        if session_id and session_id in sessions_data:
-            if sessions_data[session_id].get('ip') != ip:
-                # IP mismatch, force logout
-                session.pop('admin_email', None)
-                session.pop('session_id', None)
-                if request.endpoint and request.endpoint.startswith('admin'):
-                    return redirect(url_for('admin_login'))
+        
         # Handle session lifetime based on user preference
         session_lifetime = session.get('session_lifetime', 'normal')
         if session_lifetime == 'extended':
             app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=60)
         else:
             app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+        
         # Refresh session to prevent timeout
         session.permanent = True
 
@@ -902,35 +886,6 @@ def send_key(email, key, uid, period="30 day"):
 # =================== Admin Dashboard Functions ===================
 # OTP storage: {email: {'code': '123456', 'expires': datetime, 'attempts': 0}}
 otp_storage = {}
-# Persist OTPs to disk so they survive restarts
-OTP_FILE = 'data/dashboard/otp_storage.json'
-
-def save_otp_storage():
-    try:
-        os.makedirs(os.path.dirname(OTP_FILE), exist_ok=True)
-        with open(OTP_FILE, 'w', encoding='utf-8') as f:
-            # Convert datetime to string for JSON
-            serializable = {k: {**v, 'expires': v['expires'].strftime('%Y-%m-%d %H:%M:%S.%f')} for k, v in otp_storage.items()}
-            json.dump(serializable, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        print(f"[OTP] Error saving OTPs: {e}")
-
-def load_otp_storage():
-    global otp_storage
-    try:
-        if os.path.exists(OTP_FILE):
-            with open(OTP_FILE, 'r', encoding='utf-8') as f:
-                raw = json.load(f)
-                # Convert 'expires' back to datetime
-                for email, v in raw.items():
-                    if 'expires' in v:
-                        v['expires'] = datetime.strptime(v['expires'], '%Y-%m-%d %H:%M:%S.%f')
-                otp_storage = raw
-    except Exception as e:
-        print(f"[OTP] Error loading OTPs: {e}")
-
-# Load OTPs at startup
-load_otp_storage()
 # Email send tracking: {email: {'count': 5, 'reset_time': datetime, 'cooldown_until': datetime}}
 email_send_tracking = {}
 OTP_EXPIRY_MINUTES = 10
@@ -1089,28 +1044,28 @@ def send_otp_email(email, otp):
 
 def verify_otp(email, otp_code):
     """Verify OTP code"""
-    load_otp_storage()  # Always reload to get latest
     if email not in otp_storage:
         return False, "OTP not found or expired"
+    
     stored = otp_storage[email]
+    
     # Check expiry
     if datetime.now() > stored['expires']:
         del otp_storage[email]
-        save_otp_storage()
         return False, "OTP expired"
+    
     # Check attempts
     if stored['attempts'] >= MAX_OTP_ATTEMPTS:
         del otp_storage[email]
-        save_otp_storage()
         return False, "Too many failed attempts"
+    
     # Verify code
     if stored['code'] != otp_code:
         otp_storage[email]['attempts'] += 1
-        save_otp_storage()
         return False, "Invalid OTP"
+    
     # Success - remove OTP
     del otp_storage[email]
-    save_otp_storage()
     return True, "OTP verified"
 
 def check_email_send_cooldown(email):
@@ -1906,8 +1861,6 @@ def admin_login():
 
 @app.route("/admin/send-otp", methods=["POST"])
 def admin_send_otp():
-        print(f"[DEBUG] Sending OTP to {email}, code={otp}")
-        print(f"[DEBUG] Verifying OTP for {email}, input={otp_code}, stored={otp_storage.get(email)}")
     """Send OTP to email"""
     try:
         data = request.get_json()
@@ -1932,7 +1885,6 @@ def admin_send_otp():
             'expires': datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
             'attempts': 0
         }
-        save_otp_storage()
         
         # Send OTP
         success, message = send_otp_email(email, otp)
@@ -1993,7 +1945,6 @@ def admin_verify_otp():
 
 @app.route("/admin/login-password", methods=["POST"])
 def admin_login_password():
-        print(f"[DEBUG] Password login attempt: password={{password}}, password_access={{password_access}}")
     """Login with password only (no email required)"""
     try:
         data = request.get_json()
@@ -2006,38 +1957,24 @@ def admin_login_password():
         # Load password_access from auth.json
         config = load_auth_config()
         password_access = config.get('password_access', [])
-        # Support both list and dict for password_access
-        valid = False
-        if isinstance(password_access, list):
-            valid = password in password_access
-        elif isinstance(password_access, dict):
-            valid = password in password_access.values() or password in password_access.keys()
-        if not valid:
+        
+        # Check if password exists in array
+        if password not in password_access:
             return jsonify({'success': False, 'message': 'Password không chính xác'})
+        
         # Use owner email for login (since we don't need specific email)
         owner_email = config.get('owner_email', 'lewisvn1234@gmail.com')
+        
         # Create session with owner email
         session['admin_email'] = owner_email
         session.permanent = True  # Always set permanent to use PERMANENT_SESSION_LIFETIME
+        
         # Store session lifetime preference in session itself
         if remember_me:
             session['session_lifetime'] = 'extended'  # 60 days
         else:
             session['session_lifetime'] = 'normal'    # 24 hours
-        # Generate session_id and store IP in auth.json
-        import uuid
-        session_id = str(uuid.uuid4())
-        session['session_id'] = session_id
-        ip = get_client_ip()
-        config.setdefault('sessions', {})
-        config['sessions'][session_id] = {
-            'ip': ip,
-            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'remember_me': remember_me
-        }
-        # Save back to auth.json
-        with open(AUTH_FILE, 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
+        
         return jsonify({
             'success': True,
             'message': 'Đăng nhập thành công',
