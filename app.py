@@ -902,6 +902,35 @@ def send_key(email, key, uid, period="30 day"):
 # =================== Admin Dashboard Functions ===================
 # OTP storage: {email: {'code': '123456', 'expires': datetime, 'attempts': 0}}
 otp_storage = {}
+# Persist OTPs to disk so they survive restarts
+OTP_FILE = 'data/dashboard/otp_storage.json'
+
+def save_otp_storage():
+    try:
+        os.makedirs(os.path.dirname(OTP_FILE), exist_ok=True)
+        with open(OTP_FILE, 'w', encoding='utf-8') as f:
+            # Convert datetime to string for JSON
+            serializable = {k: {**v, 'expires': v['expires'].strftime('%Y-%m-%d %H:%M:%S.%f')} for k, v in otp_storage.items()}
+            json.dump(serializable, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"[OTP] Error saving OTPs: {e}")
+
+def load_otp_storage():
+    global otp_storage
+    try:
+        if os.path.exists(OTP_FILE):
+            with open(OTP_FILE, 'r', encoding='utf-8') as f:
+                raw = json.load(f)
+                # Convert 'expires' back to datetime
+                for email, v in raw.items():
+                    if 'expires' in v:
+                        v['expires'] = datetime.strptime(v['expires'], '%Y-%m-%d %H:%M:%S.%f')
+                otp_storage = raw
+    except Exception as e:
+        print(f"[OTP] Error loading OTPs: {e}")
+
+# Load OTPs at startup
+load_otp_storage()
 # Email send tracking: {email: {'count': 5, 'reset_time': datetime, 'cooldown_until': datetime}}
 email_send_tracking = {}
 OTP_EXPIRY_MINUTES = 10
@@ -1060,28 +1089,28 @@ def send_otp_email(email, otp):
 
 def verify_otp(email, otp_code):
     """Verify OTP code"""
+    load_otp_storage()  # Always reload to get latest
     if email not in otp_storage:
         return False, "OTP not found or expired"
-    
     stored = otp_storage[email]
-    
     # Check expiry
     if datetime.now() > stored['expires']:
         del otp_storage[email]
+        save_otp_storage()
         return False, "OTP expired"
-    
     # Check attempts
     if stored['attempts'] >= MAX_OTP_ATTEMPTS:
         del otp_storage[email]
+        save_otp_storage()
         return False, "Too many failed attempts"
-    
     # Verify code
     if stored['code'] != otp_code:
         otp_storage[email]['attempts'] += 1
+        save_otp_storage()
         return False, "Invalid OTP"
-    
     # Success - remove OTP
     del otp_storage[email]
+    save_otp_storage()
     return True, "OTP verified"
 
 def check_email_send_cooldown(email):
@@ -1877,6 +1906,8 @@ def admin_login():
 
 @app.route("/admin/send-otp", methods=["POST"])
 def admin_send_otp():
+        print(f"[DEBUG] Sending OTP to {email}, code={otp}")
+        print(f"[DEBUG] Verifying OTP for {email}, input={otp_code}, stored={otp_storage.get(email)}")
     """Send OTP to email"""
     try:
         data = request.get_json()
@@ -1901,6 +1932,7 @@ def admin_send_otp():
             'expires': datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
             'attempts': 0
         }
+        save_otp_storage()
         
         # Send OTP
         success, message = send_otp_email(email, otp)
@@ -1961,6 +1993,7 @@ def admin_verify_otp():
 
 @app.route("/admin/login-password", methods=["POST"])
 def admin_login_password():
+        print(f"[DEBUG] Password login attempt: password={{password}}, password_access={{password_access}}")
     """Login with password only (no email required)"""
     try:
         data = request.get_json()
