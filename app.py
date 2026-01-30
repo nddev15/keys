@@ -1,3 +1,9 @@
+def get_client_ip():
+    if request.headers.get('X-Forwarded-For'):
+        ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    else:
+        ip = request.remote_addr
+    return ip
 import os
 import sqlite3
 import string
@@ -306,20 +312,30 @@ def manage_session():
     # Check admin session
     if 'admin_email' in session:
         admin_email = session.get('admin_email')
-        
         # Verify email is still authorized
         if not admin_email or not is_email_authorized(admin_email):
             session.pop('admin_email', None)
+            session.pop('session_id', None)
             if request.endpoint and request.endpoint.startswith('admin'):
                 return redirect(url_for('admin_login'))
-        
+        # Check IP binding
+        config = load_auth_config()
+        sessions_data = config.get('sessions', {})
+        ip = get_client_ip()
+        session_id = session.get('session_id')
+        if session_id and session_id in sessions_data:
+            if sessions_data[session_id].get('ip') != ip:
+                # IP mismatch, force logout
+                session.pop('admin_email', None)
+                session.pop('session_id', None)
+                if request.endpoint and request.endpoint.startswith('admin'):
+                    return redirect(url_for('admin_login'))
         # Handle session lifetime based on user preference
         session_lifetime = session.get('session_lifetime', 'normal')
         if session_lifetime == 'extended':
             app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=60)
         else:
             app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
-        
         # Refresh session to prevent timeout
         session.permanent = True
 
@@ -1957,24 +1973,38 @@ def admin_login_password():
         # Load password_access from auth.json
         config = load_auth_config()
         password_access = config.get('password_access', [])
-        
-        # Check if password exists in array
-        if password not in password_access:
+        # Support both list and dict for password_access
+        valid = False
+        if isinstance(password_access, list):
+            valid = password in password_access
+        elif isinstance(password_access, dict):
+            valid = password in password_access.values() or password in password_access.keys()
+        if not valid:
             return jsonify({'success': False, 'message': 'Password không chính xác'})
-        
         # Use owner email for login (since we don't need specific email)
         owner_email = config.get('owner_email', 'lewisvn1234@gmail.com')
-        
         # Create session with owner email
         session['admin_email'] = owner_email
         session.permanent = True  # Always set permanent to use PERMANENT_SESSION_LIFETIME
-        
         # Store session lifetime preference in session itself
         if remember_me:
             session['session_lifetime'] = 'extended'  # 60 days
         else:
             session['session_lifetime'] = 'normal'    # 24 hours
-        
+        # Generate session_id and store IP in auth.json
+        import uuid
+        session_id = str(uuid.uuid4())
+        session['session_id'] = session_id
+        ip = get_client_ip()
+        config.setdefault('sessions', {})
+        config['sessions'][session_id] = {
+            'ip': ip,
+            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'remember_me': remember_me
+        }
+        # Save back to auth.json
+        with open(AUTH_FILE, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
         return jsonify({
             'success': True,
             'message': 'Đăng nhập thành công',

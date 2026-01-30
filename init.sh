@@ -20,6 +20,7 @@ restore_if_missing "/app/data/coupon/coupons.json"
 restore_if_missing "/app/data/links/download.json"
 restore_if_missing "/app/data/prices/prices.json"
 restore_if_missing "/app/data/settings/settings.json"
+restore_if_missing "/app/data/dashboard/user_settings.json"
 restore_if_missing "/app/orders.db"
 
 # Restore key files
