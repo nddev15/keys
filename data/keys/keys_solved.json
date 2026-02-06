@@ -1,5 +1,6 @@
 [
   {
+<<<<<<< HEAD
     "key": "666Cheat-day-G8qk2ZxM1hrFkts4",
     "timestamp": "2026-02-05T14:42:49.673169",
     "email": "huydang167@gmail.com",
@@ -9,5 +10,15 @@
     "couponused": "no",
     "couponcode": "N/A",
     "discount": 0
+=======
+    "key": "666Cheat-day-UodQzTptIyZIw92P",
+    "timestamp": "2026-02-02T12:44:09.608650",
+    "email": "lewisvn1234@gmail.com"
+  },
+  {
+    "key": "666Cheat-day-G8qk2ZxM1hrFkts4",
+    "timestamp": "2026-02-05T14:42:49.673169",
+    "email": "huydang167@gmail.com"
+>>>>>>> cc73e77933e1a9dae01b459affa4a4eb69333b1b
   }
 ]
