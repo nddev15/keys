@@ -15,7 +15,7 @@ class GitHubDataManager:
     
     def __init__(self):
         self.token = os.environ.get('GITHUB_TOKEN', '')
-        self.owner = os.environ.get('GITHUB_OWNER', 'abcxyznd')
+        self.owner = os.environ.get('GITHUB_OWNER', 'nddev15')
         self.repo = os.environ.get('GITHUB_REPO', 'keys')
         self.api_base = 'https://api.github.com'
         self.use_github = bool(self.token and self.owner and self.repo)
@@ -2320,7 +2320,7 @@ def process_new_price(message):
 
 def sync_data_by_type(data_type):
     """Sync specific data type from GitHub"""
-    GITHUB_RAW_URL = "https://raw.githubusercontent.com/abcxyznd/keys/main"
+    GITHUB_RAW_URL = "https://raw.githubusercontent.com/nddev15/keys/main"
     
     # Define files for each data type
     data_files = {

@@ -4,7 +4,7 @@ import time
 import threading
 from datetime import datetime
 
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/abcxyznd/keys/main"
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/nddev15/keys/main"
 SYNC_INTERVAL = 300  # 5 phút (300 giây)
 
 def sync_keys_from_github():
